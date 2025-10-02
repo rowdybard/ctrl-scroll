@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: ctrl-scroll
+    runtime: node
+    plan: starter
+    buildCommand: pnpm install
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SITE_DIR
+        value: /var/data/site
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ALLOWLIST_SUBS
+        value: news,technology
+      - key: DENYLIST
+        value: NSFW,leak
+      - key: MAX_POSTS
+        value: 3
+      - key: MIN_SCORE
+        value: 50
+      - key: MAX_AGE_HOURS
+        value: 48
+      - key: USER_AGENT
+        value: CtrlScrollBot/1.0
+      - key: CRON_SECRET
+        sync: false
+      - key: SITE_URL
+        value: https://ctrlscroll.onrender.com
+      - key: AUTO_GENERATE
+        value: true
+    disk:
+      name: site-storage
+      mountPath: /var/data
+      sizeGB: 1
+
+# Optional: Add a cron job to trigger generation
+# - type: cron
+#   name: ctrl-scroll-generator
+#   schedule: "0 */6 * * *"
+#   runtime: node
+#   buildCommand: pnpm install
+#   startCommand: curl -H "x-cron: $CRON_SECRET" https://ctrlscroll.onrender.com/generate
+
