@@ -5,8 +5,13 @@ import path from 'path';
 import slugify from 'slugify';
 import OpenAI from 'openai';
 
+// Validate API key
+if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes('sk-proj-...')) {
+  throw new Error('OPENAI_API_KEY not set in environment variables');
+}
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const SITE_DIR = process.env.SITE_DIR || './site';
+const SITE_DIR = process.env.SITE_DIR || path.join(process.cwd(), 'site');
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 const ALLOWLIST = (process.env.ALLOWLIST_SUBS || 'news').split(',').map(s => s.trim());
 const DENYLIST = (process.env.DENYLIST || 'NSFW').split(',').map(s => s.trim().toLowerCase());
@@ -98,9 +103,15 @@ function escapeHtml(text) {
 
 async function fetchRedditPosts(subreddit) {
   const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=25`;
+  console.log(`  📡 Fetching: ${url}`);
   const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
-  if (!response.ok) throw new Error(`Reddit API error: ${response.status}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ Reddit API error ${response.status}: ${errorText}`);
+    throw new Error(`Reddit API error: ${response.status}`);
+  }
   const data = await response.json();
+  console.log(`  📦 Received ${data.data.children.length} posts from r/${subreddit}`);
   return data.data.children.map(c => c.data);
 }
 
@@ -128,14 +139,18 @@ async function summarizePost(post) {
 Title: ${post.title}
 Content: ${post.selftext || 'No additional text.'}`;
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: 150,
-    temperature: 0.7,
-  });
-
-  return completion.choices[0].message.content.trim();
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 150,
+      temperature: 0.7,
+    });
+    return completion.choices[0].message.content.trim();
+  } catch (error) {
+    console.error(`❌ OpenAI API error: ${error.message}`);
+    throw error;
+  }
 }
 
 function formatDate(timestamp) {
@@ -146,6 +161,9 @@ function formatDate(timestamp) {
 
 async function generate() {
   console.log('🚀 Starting Ctrl Scroll generator...');
+  console.log(`📂 Site directory: ${SITE_DIR}`);
+  console.log(`🔑 OpenAI API Key: ${process.env.OPENAI_API_KEY ? 'Set ✓' : 'MISSING ✗'}`);
+  console.log(`📋 Allowlist: ${ALLOWLIST.join(', ')}`);
   
   // Ensure directories exist
   await fs.ensureDir(SITE_DIR);
@@ -158,7 +176,9 @@ async function generate() {
     console.log(`📡 Fetching r/${subreddit}...`);
     try {
       const posts = await fetchRedditPosts(subreddit);
+      console.log(`  🔍 Filtering ${posts.length} posts...`);
       const filtered = posts.filter(filterPost).slice(0, MAX_POSTS);
+      console.log(`  ✓ ${filtered.length} posts passed filters`);
       
       for (const post of filtered) {
         console.log(`  ✨ Processing: ${post.title.substring(0, 50)}...`);

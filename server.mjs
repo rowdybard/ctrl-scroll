@@ -8,7 +8,7 @@ import generate from './run.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
-const SITE_DIR = process.env.SITE_DIR || './site';
+const SITE_DIR = process.env.SITE_DIR || path.join(process.cwd(), 'site');
 const CRON_SECRET = process.env.CRON_SECRET || 'changeme';
 const AUTO_GENERATE_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
 
@@ -33,7 +33,12 @@ app.get('/generate', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Generation failed:', error);
-    res.status(500).json({ error: 'Generation failed', message: error.message });
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      error: 'Generation failed', 
+      message: error.message,
+      details: error.stack 
+    });
   }
 });
 
@@ -289,7 +294,8 @@ app.get('/admin', (req, res) => {
           updateStats();
         } else {
           statusEl.className = 'status error';
-          statusEl.textContent = '❌ ' + (data.error || 'Generation failed');
+          statusEl.innerHTML = '❌ ' + (data.error || 'Generation failed') + 
+            '<br><small>' + (data.message || '') + '</small>';
         }
       } catch (error) {
         statusEl.className = 'status error';
