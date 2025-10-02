@@ -40,7 +40,7 @@ app.get('/health', (req, res) => {
 
 // Fallback to index for root
 app.get('/', (req, res) => {
-  res.sendFile(path.join(SITE_DIR, 'index.html'), (err) => {
+  res.sendFile(path.resolve(SITE_DIR, 'index.html'), (err) => {
     if (err) {
       res.status(404).send('<h1>No content yet</h1><p>Trigger generation at /generate with x-cron header</p>');
     }
