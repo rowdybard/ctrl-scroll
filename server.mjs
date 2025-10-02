@@ -25,8 +25,12 @@ app.get('/generate', async (req, res) => {
   
   try {
     console.log('🔄 Manual generation triggered via /generate endpoint');
-    await generate();
-    res.json({ success: true, message: 'Site regenerated successfully' });
+    const result = await generate();
+    res.json({ 
+      success: true, 
+      message: `Generated ${result.totalPosts} posts successfully`,
+      data: result
+    });
   } catch (error) {
     console.error('❌ Generation failed:', error);
     res.status(500).json({ error: 'Generation failed', message: error.message });
@@ -280,7 +284,8 @@ app.get('/admin', (req, res) => {
 
         if (response.ok) {
           statusEl.className = 'status success';
-          statusEl.textContent = '✅ ' + (data.message || 'Content generated successfully!');
+          statusEl.innerHTML = '✅ ' + (data.message || 'Content generated successfully!') + 
+            '<br><small>Total: ' + (data.data?.totalPosts || 0) + ' posts, Recent: ' + (data.data?.recentPosts || 0) + '</small>';
           updateStats();
         } else {
           statusEl.className = 'status error';

@@ -223,6 +223,13 @@ Sitemap: ${SITE_URL}/sitemap.xml`;
   await fs.writeFile(path.join(SITE_DIR, 'robots.txt'), robots);
   
   console.log(`✅ Generated ${allPosts.length} posts successfully!`);
+  
+  return {
+    success: true,
+    totalPosts: allPosts.length,
+    recentPosts: recentPosts.length,
+    siteDir: SITE_DIR
+  };
 }
 
 // Run if called directly
