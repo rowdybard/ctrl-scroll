@@ -3,8 +3,8 @@ services:
     name: ctrlscroll
     env: node
     plan: starter
-    buildCommand: pnpm install --frozen-lockfile && pnpm build && ls -la apps/web/.next
-    startCommand: cd apps/web && PORT=$PORT node_modules/.bin/next start
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start
     envVars:
       - key: PUBLIC_ORIGIN
         fromService:
