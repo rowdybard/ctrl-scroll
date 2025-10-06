@@ -12,6 +12,12 @@ services:
         value: /var/data/site
       - key: OPENAI_API_KEY
         sync: false
+      - key: REDDIT_CLIENT_ID
+        sync: false
+      - key: REDDIT_CLIENT_SECRET
+        sync: false
+      - key: REDDIT_USERNAME
+        value: CtrlScrollBot
       - key: ALLOWLIST_SUBS
         value: news,worldnews,technology,science,AskReddit
       - key: DENYLIST

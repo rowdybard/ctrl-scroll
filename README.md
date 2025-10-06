@@ -16,22 +16,36 @@
    cp env.example .env
    ```
 
-3. **Add your OpenAI API key** to `.env`:
+3. **Get Reddit API credentials:**
+   - Go to https://www.reddit.com/prefs/apps
+   - Click "create another app..." at the bottom
+   - Fill in:
+     - **name**: CtrlScrollBot (or whatever you want)
+     - **type**: Select "script"
+     - **description**: Reddit content aggregator
+     - **about url**: (leave blank)
+     - **redirect uri**: http://localhost:8080 (required but not used)
+   - Click "create app"
+   - Copy the **client ID** (under the app name) and **secret**
+
+4. **Add your API keys** to `.env`:
    ```
    OPENAI_API_KEY=sk-proj-...
+   REDDIT_CLIENT_ID=your_client_id_here
+   REDDIT_CLIENT_SECRET=your_secret_here
    ```
 
-4. **Generate content:**
+5. **Generate content:**
    ```bash
    pnpm generate
    ```
 
-5. **Start server:**
+6. **Start server:**
    ```bash
    pnpm dev
    ```
 
-6. **Visit:** `http://localhost:3000`
+7. **Visit:** `http://localhost:3000`
 
 ### Manual Generation
 
@@ -51,8 +65,10 @@ curl -H "x-cron: changeme" http://localhost:3000/generate
 4. **Render will auto-detect** `render.yaml`
 
 5. **Set environment secrets:**
-   - `OPENAI_API_KEY`
-   - `CRON_SECRET`
+   - `OPENAI_API_KEY` - Your OpenAI API key
+   - `REDDIT_CLIENT_ID` - From Reddit app
+   - `REDDIT_CLIENT_SECRET` - From Reddit app
+   - `CRON_SECRET` - Random secret for the /generate endpoint
 
 6. **Deploy!** Your site will be live at `https://ctrlscroll.onrender.com`
 
@@ -61,6 +77,9 @@ curl -H "x-cron: changeme" http://localhost:3000/generate
 All settings are in `.env`:
 
 - `OPENAI_API_KEY` - Your OpenAI API key
+- `REDDIT_CLIENT_ID` - Reddit app client ID (get from https://www.reddit.com/prefs/apps)
+- `REDDIT_CLIENT_SECRET` - Reddit app secret
+- `REDDIT_USERNAME` - Your Reddit username or bot name (default: CtrlScrollBot)
 - `ALLOWLIST_SUBS` - Comma-separated subreddits (e.g., `news,technology`)
 - `DENYLIST` - Comma-separated keywords to filter (e.g., `NSFW,leak`)
 - `MAX_POSTS` - Max posts per subreddit (default: 3)
@@ -90,6 +109,7 @@ ctrl-scroll/
 
 ## 🎯 Features
 
+- ✅ Uses official Reddit OAuth API (no more 403 errors!)
 - ✅ Fetches hot posts from allowlisted subreddits
 - ✅ Filters NSFW, denylist keywords, low scores
 - ✅ Summarizes with GPT-4o-mini
@@ -105,8 +125,8 @@ ctrl-scroll/
 - Only processes allowlisted subreddits
 - Blocks NSFW content
 - Filters denylist keywords
+- Uses official Reddit OAuth API
 - Respects Reddit API ToS
-- Sets proper User-Agent
 - Includes source attribution
 - No personal, medical, or financial advice
 

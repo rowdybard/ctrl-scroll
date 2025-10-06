@@ -18,7 +18,13 @@ const DENYLIST = (process.env.DENYLIST || 'NSFW').split(',').map(s => s.trim().t
 const MAX_POSTS = parseInt(process.env.MAX_POSTS || '3');
 const MIN_SCORE = parseInt(process.env.MIN_SCORE || '50');
 const MAX_AGE_HOURS = parseInt(process.env.MAX_AGE_HOURS || '48');
-const USER_AGENT = process.env.USER_AGENT || 'CtrlScrollBot/1.0';
+const REDDIT_CLIENT_ID = process.env.REDDIT_CLIENT_ID;
+const REDDIT_CLIENT_SECRET = process.env.REDDIT_CLIENT_SECRET;
+const REDDIT_USERNAME = process.env.REDDIT_USERNAME || 'CtrlScrollBot';
+
+// OAuth token cache
+let redditAccessToken = null;
+let tokenExpiry = null;
 
 // HTML Templates
 const postTemplate = (title, summary, sourceUrl, subreddit, score, date) => `<!DOCTYPE html>
@@ -101,63 +107,63 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-async function fetchRedditPosts(subreddit) {
-  // Use old.reddit.com - more lenient with API access
-  const url = `https://old.reddit.com/r/${subreddit}/hot.json?limit=25`;
-  console.log(`  📡 Fetching: ${url}`);
-  console.log(`  🔑 Using User-Agent: ${USER_AGENT.substring(0, 50)}...`);
+async function getRedditAccessToken() {
+  // Return cached token if still valid
+  if (redditAccessToken && tokenExpiry && Date.now() < tokenExpiry) {
+    console.log('  🔑 Using cached Reddit access token');
+    return redditAccessToken;
+  }
+
+  console.log('  🔑 Getting new Reddit OAuth token...');
   
-  // More realistic browser headers to avoid 403
+  if (!REDDIT_CLIENT_ID || !REDDIT_CLIENT_SECRET) {
+    throw new Error('REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET must be set. See https://www.reddit.com/prefs/apps');
+  }
+
+  const auth = Buffer.from(`${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}`).toString('base64');
+  
+  const response = await fetch('https://www.reddit.com/api/v1/access_token', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': `${REDDIT_USERNAME}/1.0 by ${REDDIT_USERNAME}`
+    },
+    body: 'grant_type=client_credentials'
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ Reddit OAuth error: ${errorText}`);
+    throw new Error(`Reddit OAuth failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  redditAccessToken = data.access_token;
+  tokenExpiry = Date.now() + (data.expires_in * 1000) - 60000; // Refresh 1 min early
+  
+  console.log(`  ✅ Got Reddit OAuth token (expires in ${data.expires_in}s)`);
+  return redditAccessToken;
+}
+
+async function fetchRedditPosts(subreddit) {
+  // Use official OAuth API
+  const token = await getRedditAccessToken();
+  const url = `https://oauth.reddit.com/r/${subreddit}/hot?limit=25`;
+  console.log(`  📡 Fetching: ${url}`);
+  
   const headers = {
-    'User-Agent': USER_AGENT,
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'DNT': '1',
-    'Connection': 'keep-alive',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Cache-Control': 'max-age=0'
+    'Authorization': `Bearer ${token}`,
+    'User-Agent': `${REDDIT_USERNAME}/1.0 by ${REDDIT_USERNAME}`
   };
   
-  let response;
-  let lastError;
+  const response = await fetch(url, { headers });
+  console.log(`  📊 Response status: ${response.status} ${response.statusText}`);
   
-  // Retry up to 3 times with exponential backoff
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      response = await fetch(url, { headers });
-      console.log(`  📊 Response status: ${response.status} ${response.statusText}`);
-      
-      if (response.ok) {
-        break; // Success!
-      }
-      
-      if (response.status === 403) {
-        console.log(`  ⚠️ Got 403 on attempt ${attempt}/3`);
-        if (attempt < 3) {
-          const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s
-          console.log(`  ⏳ Waiting ${waitTime/1000}s before retry...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-      } else {
-        break; // Don't retry other errors
-      }
-    } catch (error) {
-      lastError = error;
-      console.error(`  ❌ Fetch error on attempt ${attempt}/3:`, error.message);
-      if (attempt < 3) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-    }
-  }
-  
-  if (!response || !response.ok) {
-    const errorText = response ? await response.text() : 'No response';
-    console.error(`❌ Reddit API error ${response?.status}: ${errorText.substring(0, 200)}`);
-    throw new Error(`Reddit API error: ${response?.status || 'Network error'}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ Reddit API error ${response.status}: ${errorText.substring(0, 200)}`);
+    throw new Error(`Reddit API error: ${response.status}`);
   }
   
   const data = await response.json();
@@ -231,10 +237,10 @@ async function generate() {
   console.log('🚀 Starting Ctrl Scroll generator...');
   console.log(`📂 Site directory: ${SITE_DIR}`);
   console.log(`🔑 OpenAI API Key: ${process.env.OPENAI_API_KEY ? 'Set ✓' : 'MISSING ✗'}`);
+  console.log(`🔑 Reddit OAuth: ${REDDIT_CLIENT_ID && REDDIT_CLIENT_SECRET ? 'Set ✓' : 'MISSING ✗'}`);
   console.log(`📋 Allowlist: ${ALLOWLIST.join(', ')}`);
   console.log(`🔧 Filters: MIN_SCORE=${MIN_SCORE}, MAX_AGE_HOURS=${MAX_AGE_HOURS}, MAX_POSTS=${MAX_POSTS}`);
   console.log(`🚫 Denylist: ${DENYLIST.join(', ')}`);
-  console.log(`👤 User-Agent: ${USER_AGENT.substring(0, 60)}...`);
   
   // Ensure directories exist
   await fs.ensureDir(SITE_DIR);
