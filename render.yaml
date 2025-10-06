@@ -4,8 +4,8 @@ services:
     env: node
     plan: starter
     rootDir: apps/web
-    buildCommand: pnpm install --frozen-lockfile && pnpm build
-    startCommand: pnpm start
+    buildCommand: cd ../.. && pnpm install --frozen-lockfile && pnpm build
+    startCommand: next start
     envVars:
       - key: PUBLIC_ORIGIN
         fromService:

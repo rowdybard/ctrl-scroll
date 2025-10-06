@@ -3,10 +3,6 @@
   "version": "2.0.0",
   "description": "Reddit → AI → Static Site Generator V2",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
