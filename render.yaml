@@ -25,6 +25,8 @@ services:
         value: CtrlScrollBot/2.0 by u/<yourname>
       - key: OPENAI_API_KEY
         sync: false
+      - key: GOOGLE_VERIFICATION
+        sync: false
       - key: BASIC_AUTH_USER
         sync: false
       - key: BASIC_AUTH_PASS

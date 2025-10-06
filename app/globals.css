@@ -5,6 +5,56 @@
 @layer base {
   html {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    background-color: #000000;
+    color: #ffffff;
+  }
+  
+  body {
+    background-color: #000000;
+    color: #ffffff;
+    line-height: 1.6;
+  }
+  
+  /* Improve readability with better contrast */
+  h1, h2, h3, h4, h5, h6 {
+    color: #ffffff;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  
+  p {
+    color: rgb(255 255 255 / 0.9);
+    line-height: 1.7;
+  }
+  
+  /* Focus states for accessibility */
+  *:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+  
+  /* Selection colors */
+  ::selection {
+    background-color: #3b82f6;
+    color: #ffffff;
+  }
+  
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #404040;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #525252;
   }
 }
 
@@ -14,15 +64,23 @@
   }
   
   .btn-primary {
-    @apply bg-blue-600 text-white hover:bg-blue-700;
+    @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 text-gray-900 hover:bg-gray-300;
+    @apply bg-neutral-800 text-white hover:bg-neutral-700 border border-neutral-700 focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 focus:ring-offset-black;
+  }
+  
+  .btn-ghost {
+    @apply bg-transparent text-white/80 hover:bg-white/5 hover:text-white border border-white/10 focus:ring-2 focus:ring-white/20 focus:ring-offset-2 focus:ring-offset-black;
   }
   
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+    @apply bg-neutral-900 rounded-xl shadow-sm border border-white/5 p-6;
+  }
+  
+  .card-hover {
+    @apply bg-neutral-900 rounded-xl shadow-sm border border-white/5 p-6 hover:bg-neutral-800 hover:border-white/10 transition-all duration-200;
   }
   
   .badge {
@@ -30,11 +88,19 @@
   }
   
   .badge-reddit {
-    @apply bg-orange-100 text-orange-800;
+    @apply bg-orange-900/30 text-orange-300 border border-orange-800/30;
   }
   
   .badge-live {
-    @apply bg-red-100 text-red-800 animate-pulse;
+    @apply bg-red-900/30 text-red-300 border border-red-800/30 animate-pulse;
+  }
+  
+  .badge-topic {
+    @apply bg-blue-900/30 text-blue-300 border border-blue-800/30;
+  }
+  
+  .badge-neutral {
+    @apply bg-neutral-800 text-neutral-300 border border-neutral-700;
   }
 
   /* Layout F specific styles */

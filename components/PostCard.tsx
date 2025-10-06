@@ -88,7 +88,7 @@ export default function PostCard({ post, index, variant, onImpression }: PostCar
   const heroImage = post.images?.hero;
 
   return (
-    <div ref={cardRef} className="card hover:shadow-md transition-shadow duration-200 overflow-hidden">
+    <div ref={cardRef} className="card-hover overflow-hidden">
       {/* Hero Image */}
       {heroImage && (
         <div className="relative h-48 w-full overflow-hidden">
@@ -117,11 +117,11 @@ export default function PostCard({ post, index, variant, onImpression }: PostCar
               )}
             </div>
           )}
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span>{post.score} ↑</span>
-            <span>•</span>
-            <span>{formatDate(post.createdUtc)}</span>
-          </div>
+        <div className="flex items-center gap-2 text-sm text-white/60">
+          <span>{post.score} ↑</span>
+          <span>•</span>
+          <span>{formatDate(post.createdUtc)}</span>
+        </div>
         </div>
 
         <Link 
@@ -129,19 +129,19 @@ export default function PostCard({ post, index, variant, onImpression }: PostCar
         className="block group"
         onClick={() => trackClick(post.id, variant)}
       >
-        <h2 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-200 line-clamp-2">
+        <h2 className="text-xl font-semibold text-white mb-3 group-hover:text-blue-400 transition-colors duration-200 line-clamp-2">
           {post.title}
         </h2>
         
-        <p className="text-gray-600 mb-4 line-clamp-2">
+        <p className="text-white/80 mb-4 line-clamp-2">
           {post.micro}
         </p>
       </Link>
 
       {/* Rich Context Preview */}
       {post.richContext?.background && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 line-clamp-2">
+        <div className="mb-4 p-3 bg-neutral-800/50 rounded-lg border border-white/5">
+          <p className="text-sm text-white/70 line-clamp-2">
             {post.richContext.background}
           </p>
         </div>
@@ -150,12 +150,12 @@ export default function PostCard({ post, index, variant, onImpression }: PostCar
       {post.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-4">
           {post.tags.slice(0, 3).map((tag, index) => (
-            <span key={index} className="badge bg-gray-100 text-gray-700 text-xs">
+            <span key={index} className="badge badge-topic text-xs">
               {tag}
             </span>
           ))}
           {post.tags.length > 3 && (
-            <span className="badge bg-gray-100 text-gray-700 text-xs">
+            <span className="badge badge-neutral text-xs">
               +{post.tags.length - 3} more
             </span>
           )}
@@ -171,7 +171,7 @@ export default function PostCard({ post, index, variant, onImpression }: PostCar
           Read More
         </Link>
         
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-white/40">
           Variant {variant}
         </div>
         </div>
