@@ -6,7 +6,7 @@
   "scripts": {
     "build": "pnpm --filter @ctrlscroll/shared build && pnpm --filter @ctrlscroll/web build",
     "dev": "turbo run dev",
-    "start": "cd apps/web && NODE_ENV=production next start",
+    "start": "node scripts/prepare-start.js",
     "test": "turbo run test",
     "test:shared": "turbo run test --filter=@ctrlscroll/shared",
     "lint": "turbo run lint",
