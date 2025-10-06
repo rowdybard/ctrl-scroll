@@ -239,16 +239,31 @@ app.get('/admin', (req, res) => {
       outline: none;
       border-color: #667eea;
     }
+    .post-table-container {
+      max-height: 600px;
+      overflow-y: auto;
+      border: 2px solid #e0e7ff;
+      border-radius: 8px;
+      background: white;
+    }
     .post-table {
       width: 100%;
       background: white;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 2px solid #e0e7ff;
     }
     .post-table table {
       width: 100%;
       border-collapse: collapse;
+    }
+    .post-table tbody tr {
+      cursor: move;
+      user-select: none;
+    }
+    .post-table tbody tr.dragging {
+      opacity: 0.5;
+      background: #f8f9ff;
+    }
+    .post-table tbody tr.drag-over {
+      border-top: 3px solid #667eea;
     }
     .post-table th {
       background: #f8f9ff;
@@ -399,6 +414,35 @@ app.get('/admin', (req, res) => {
       padding: 40px;
       color: #667eea;
     }
+    .post-manager-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .post-manager-header h2 {
+      margin: 0;
+    }
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+      transform: translateY(-1px);
+    }
+    .drag-handle {
+      cursor: move;
+      color: #999;
+      margin-right: 8px;
+    }
   </style>
 </head>
 <body>
@@ -444,7 +488,10 @@ app.get('/admin', (req, res) => {
     </div>
 
     <div class="section">
-      <h2>📝 Post Manager</h2>
+      <div class="post-manager-header">
+        <h2>📝 Post Manager</h2>
+        <button class="btn-danger" onclick="deleteAllPosts()">🗑️ Delete All Posts</button>
+      </div>
       <input type="text" id="searchPosts" class="search-box" placeholder="🔍 Search posts by title, subreddit, or content...">
       
       <div id="postsContainer">
@@ -563,53 +610,62 @@ app.get('/admin', (req, res) => {
       }
 
       const html = \`
-        <div class="post-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Subreddit</th>
-                <th>Score</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              \${posts.map(post => \`
+        <div class="post-table-container">
+          <div class="post-table">
+            <table>
+              <thead>
                 <tr>
-                  <td>
-                    <div class="post-title" title="\${escapeHtml(post.title)}">
-                      \${escapeHtml(post.title)}
-                    </div>
-                  </td>
-                  <td>
-                    <span class="post-badge badge-\${post.subreddit.toLowerCase()}">
-                      r/\${escapeHtml(post.subreddit)}
-                    </span>
-                  </td>
-                  <td>\${post.score} ↑</td>
-                  <td>\${post.date}</td>
-                  <td>
-                    <div class="post-actions">
-                      <button class="btn-small btn-view" onclick="window.open('/posts/\${post.slug}.html', '_blank')" title="View Live">
-                        👁️ View
-                      </button>
-                      <button class="btn-small btn-preview" onclick="previewPost('\${post.slug}')" title="Preview Formatted">
-                        🔍 Preview
-                      </button>
-                      <button class="btn-small btn-delete" onclick="deletePost('\${post.slug}')" title="Delete Post">
-                        🗑️ Delete
-                      </button>
-                    </div>
-                  </td>
+                  <th style="width: 40px;"></th>
+                  <th>Title</th>
+                  <th>Subreddit</th>
+                  <th>Score</th>
+                  <th>Date</th>
+                  <th>Actions</th>
                 </tr>
-              \`).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody id="postTableBody">
+                \${posts.map((post, index) => \`
+                  <tr draggable="true" data-slug="\${post.slug}" data-index="\${index}">
+                    <td>
+                      <span class="drag-handle">⋮⋮</span>
+                    </td>
+                    <td>
+                      <div class="post-title" title="\${escapeHtml(post.title)}">
+                        \${escapeHtml(post.title)}
+                      </div>
+                    </td>
+                    <td>
+                      <span class="post-badge badge-\${post.subreddit.toLowerCase()}">
+                        r/\${escapeHtml(post.subreddit)}
+                      </span>
+                    </td>
+                    <td>\${post.score} ↑</td>
+                    <td>\${post.date}</td>
+                    <td>
+                      <div class="post-actions">
+                        <button class="btn-small btn-view" onclick="window.open('/posts/\${post.slug}.html', '_blank')" title="View Live">
+                          👁️ View
+                        </button>
+                        <button class="btn-small btn-preview" onclick="previewPost('\${post.slug}')" title="Preview Formatted">
+                          🔍 Preview
+                        </button>
+                        <button class="btn-small btn-delete" onclick="deletePost('\${post.slug}')" title="Delete Post">
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                \`).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
       \`;
       
       container.innerHTML = html;
+      
+      // Setup drag and drop
+      setupDragAndDrop();
     }
 
     function escapeHtml(text) {
@@ -703,6 +759,134 @@ app.get('/admin', (req, res) => {
       } catch (error) {
         alert('❌ Error: ' + error.message);
       }
+    }
+
+    // Drag and drop functionality
+    let draggedElement = null;
+
+    function setupDragAndDrop() {
+      const tbody = document.getElementById('postTableBody');
+      if (!tbody) return;
+
+      const rows = tbody.querySelectorAll('tr[draggable="true"]');
+      
+      rows.forEach(row => {
+        row.addEventListener('dragstart', handleDragStart);
+        row.addEventListener('dragover', handleDragOver);
+        row.addEventListener('drop', handleDrop);
+        row.addEventListener('dragend', handleDragEnd);
+        row.addEventListener('dragenter', handleDragEnter);
+        row.addEventListener('dragleave', handleDragLeave);
+      });
+    }
+
+    function handleDragStart(e) {
+      draggedElement = this;
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', this.innerHTML);
+    }
+
+    function handleDragOver(e) {
+      if (e.preventDefault) {
+        e.preventDefault();
+      }
+      e.dataTransfer.dropEffect = 'move';
+      return false;
+    }
+
+    function handleDragEnter(e) {
+      if (this !== draggedElement) {
+        this.classList.add('drag-over');
+      }
+    }
+
+    function handleDragLeave(e) {
+      this.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+      if (e.stopPropagation) {
+        e.stopPropagation();
+      }
+
+      if (draggedElement !== this) {
+        // Swap the dragged element with the drop target
+        const allRows = Array.from(this.parentNode.children);
+        const draggedIndex = allRows.indexOf(draggedElement);
+        const targetIndex = allRows.indexOf(this);
+
+        if (draggedIndex < targetIndex) {
+          this.parentNode.insertBefore(draggedElement, this.nextSibling);
+        } else {
+          this.parentNode.insertBefore(draggedElement, this);
+        }
+
+        // Update the order in allPosts array
+        const draggedPost = allPosts[draggedIndex];
+        allPosts.splice(draggedIndex, 1);
+        const newTargetIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+        allPosts.splice(newTargetIndex, 0, draggedPost);
+      }
+
+      return false;
+    }
+
+    function handleDragEnd(e) {
+      this.classList.remove('dragging');
+      
+      // Remove drag-over class from all rows
+      const rows = document.querySelectorAll('#postTableBody tr');
+      rows.forEach(row => row.classList.remove('drag-over'));
+    }
+
+    // Delete all posts
+    async function deleteAllPosts() {
+      if (allPosts.length === 0) {
+        alert('⚠️ No posts to delete');
+        return;
+      }
+
+      const secret = document.getElementById('cronSecret').value;
+      if (!secret) {
+        alert('⚠️ Please enter your cron secret first');
+        return;
+      }
+
+      if (!confirm(\`⚠️ WARNING: This will delete ALL \${allPosts.length} posts!\\n\\nThis action CANNOT be undone.\\n\\nAre you absolutely sure?\`)) {
+        return;
+      }
+
+      const confirmText = prompt(\`Type "DELETE ALL" to confirm deletion of \${allPosts.length} posts:\`);
+      if (confirmText !== 'DELETE ALL') {
+        alert('❌ Deletion cancelled');
+        return;
+      }
+
+      let deleted = 0;
+      let failed = 0;
+
+      for (const post of allPosts) {
+        try {
+          const response = await fetch(\`/api/posts/\${post.slug}\`, {
+            method: 'DELETE',
+            headers: { 'x-cron': secret }
+          });
+
+          if (response.ok) {
+            deleted++;
+          } else {
+            failed++;
+          }
+        } catch (error) {
+          console.error(\`Failed to delete \${post.slug}:\`, error);
+          failed++;
+        }
+      }
+
+      alert(\`✅ Deleted \${deleted} posts\` + (failed > 0 ? \`\\n❌ Failed: \${failed}\` : ''));
+      loadPosts();
+      updateStats();
     }
 
     // Load posts on page load
