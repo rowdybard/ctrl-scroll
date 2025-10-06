@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import basicAuth from '@fastify/basic-auth';
 import { config } from './config';
 import { ingestAllWatchlists } from './jobs/ingestSubreddit';
+import { processRawPosts } from './jobs/normalizeAndEnrich';
+import { summarizePosts } from './jobs/summarize';
 
 const fastify = Fastify({
   logger: {
@@ -50,15 +52,25 @@ fastify.post('/internal/run/ingest', async (request, reply) => {
 fastify.post('/internal/run/refresh', async (request, reply) => {
   try {
     console.log('🔄 Starting refresh job...');
-    // For now, just run ingest - later this will be more targeted
-    const results = await ingestAllWatchlists();
     
-    const totalProcessed = Object.values(results).reduce((sum, ids) => sum + ids.length, 0);
+    // Ingest new posts
+    const results = await ingestAllWatchlists();
+    const totalIngested = Object.values(results).reduce((sum, ids) => sum + ids.length, 0);
+    
+    // Process and normalize raw posts
+    const enrichedPosts = await processRawPosts();
+    
+    // Summarize posts
+    const summarizedPosts = await summarizePosts(enrichedPosts);
     
     return {
       success: true,
-      message: `Refreshed ${totalProcessed} posts`,
-      results
+      message: `Processed ${totalIngested} new posts, enriched ${enrichedPosts.length}, summarized ${summarizedPosts.length}`,
+      results: {
+        ingested: totalIngested,
+        enriched: enrichedPosts.length,
+        summarized: summarizedPosts.length
+      }
     };
   } catch (error) {
     console.error('❌ Refresh job failed:', error);
