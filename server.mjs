@@ -156,31 +156,6 @@ app.get('/admin', (req, res) => {
       cursor: not-allowed;
       transform: none;
     }
-    .status {
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      margin-top: 16px;
-      display: none;
-    }
-    .status.success {
-      background: #d1fae5;
-      color: #065f46;
-      border: 2px solid #6ee7b7;
-      display: block;
-    }
-    .status.error {
-      background: #fee2e2;
-      color: #991b1b;
-      border: 2px solid #fca5a5;
-      display: block;
-    }
-    .status.loading {
-      background: #dbeafe;
-      color: #1e40af;
-      border: 2px solid #93c5fd;
-      display: block;
-    }
     .stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -560,7 +535,6 @@ app.get('/admin', (req, res) => {
       <button class="btn btn-primary" onclick="generate()">
         Generate New Content
       </button>
-      <div id="status" class="status"></div>
     </div>
 
     <div class="section">
@@ -641,18 +615,16 @@ app.get('/admin', (req, res) => {
   <script>
     async function generate() {
       const secret = document.getElementById('cronSecret').value;
-      const statusEl = document.getElementById('status');
       const btn = event.target;
 
       if (!secret) {
-        statusEl.className = 'status error';
-        statusEl.textContent = '⚠️ Please enter your cron secret';
+        showToast('Cron Secret Required', 'Please enter your cron secret', 'warning');
         return;
       }
 
       btn.disabled = true;
-      statusEl.className = 'status loading';
-      statusEl.textContent = '⏳ Generating content... This may take a minute.';
+      btn.textContent = '⏳ Generating...';
+      showToast('Generating...', 'This may take a minute', 'warning');
 
       try {
         const response = await fetch('/generate', {
@@ -661,24 +633,17 @@ app.get('/admin', (req, res) => {
         const data = await response.json();
 
         if (response.ok) {
-          statusEl.className = 'status success';
-          statusEl.innerHTML = '✅ ' + (data.message || 'Content generated successfully!') + 
-            '<br><small>Total: ' + (data.data?.totalPosts || 0) + ' posts, Recent: ' + (data.data?.recentPosts || 0) + '</small>';
           showToast('Success!', 'Generated ' + (data.data?.totalPosts || 0) + ' posts', 'success');
           updateStats();
           loadPosts(); // Reload post manager
         } else {
-          statusEl.className = 'status error';
-          statusEl.innerHTML = '❌ ' + (data.error || 'Generation failed') + 
-            '<br><small>' + (data.message || '') + '</small>';
           showToast('Generation Failed', data.error || 'Unknown error', 'error');
         }
       } catch (error) {
-        statusEl.className = 'status error';
-        statusEl.textContent = '❌ Error: ' + error.message;
         showToast('Error', error.message, 'error');
       } finally {
         btn.disabled = false;
+        btn.textContent = 'Generate New Content';
       }
     }
 
