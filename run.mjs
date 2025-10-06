@@ -102,17 +102,62 @@ function escapeHtml(text) {
 }
 
 async function fetchRedditPosts(subreddit) {
-  const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=25`;
+  // Use old.reddit.com - more lenient with API access
+  const url = `https://old.reddit.com/r/${subreddit}/hot.json?limit=25`;
   console.log(`  📡 Fetching: ${url}`);
   console.log(`  🔑 Using User-Agent: ${USER_AGENT.substring(0, 50)}...`);
   
-  const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
-  console.log(`  📊 Response status: ${response.status} ${response.statusText}`);
+  // More realistic browser headers to avoid 403
+  const headers = {
+    'User-Agent': USER_AGENT,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'DNT': '1',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Cache-Control': 'max-age=0'
+  };
   
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`❌ Reddit API error ${response.status}: ${errorText.substring(0, 200)}`);
-    throw new Error(`Reddit API error: ${response.status}`);
+  let response;
+  let lastError;
+  
+  // Retry up to 3 times with exponential backoff
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      response = await fetch(url, { headers });
+      console.log(`  📊 Response status: ${response.status} ${response.statusText}`);
+      
+      if (response.ok) {
+        break; // Success!
+      }
+      
+      if (response.status === 403) {
+        console.log(`  ⚠️ Got 403 on attempt ${attempt}/3`);
+        if (attempt < 3) {
+          const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s
+          console.log(`  ⏳ Waiting ${waitTime/1000}s before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      } else {
+        break; // Don't retry other errors
+      }
+    } catch (error) {
+      lastError = error;
+      console.error(`  ❌ Fetch error on attempt ${attempt}/3:`, error.message);
+      if (attempt < 3) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+  }
+  
+  if (!response || !response.ok) {
+    const errorText = response ? await response.text() : 'No response';
+    console.error(`❌ Reddit API error ${response?.status}: ${errorText.substring(0, 200)}`);
+    throw new Error(`Reddit API error: ${response?.status || 'Network error'}`);
   }
   
   const data = await response.json();
