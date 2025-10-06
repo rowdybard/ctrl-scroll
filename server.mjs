@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import 'dotenv/config';
 import express from 'express';
+import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import generate from './run.mjs';
@@ -11,6 +12,9 @@ const PORT = process.env.PORT || 3000;
 const SITE_DIR = process.env.SITE_DIR || path.join(process.cwd(), 'site');
 const CRON_SECRET = process.env.CRON_SECRET || 'changeme';
 const AUTO_GENERATE_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+
+// Middleware
+app.use(express.json());
 
 // Serve static files
 app.use(express.static(SITE_DIR));
@@ -220,6 +224,181 @@ app.get('/admin', (req, res) => {
       background: #f8f9ff;
       border-color: #667eea;
     }
+    .post-manager {
+      margin-top: 20px;
+    }
+    .search-box {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e7ff;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .search-box:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .post-table {
+      width: 100%;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #e0e7ff;
+    }
+    .post-table table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .post-table th {
+      background: #f8f9ff;
+      color: #667eea;
+      font-weight: 600;
+      padding: 12px;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .post-table td {
+      padding: 12px;
+      border-top: 1px solid #e0e7ff;
+      font-size: 14px;
+    }
+    .post-table tr:hover {
+      background: #f8f9ff;
+    }
+    .post-title {
+      font-weight: 600;
+      color: #333;
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .post-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-news { background: #dbeafe; color: #1e40af; }
+    .badge-worldnews { background: #fef3c7; color: #92400e; }
+    .badge-technology { background: #ddd6fe; color: #5b21b6; }
+    .badge-science { background: #d1fae5; color: #065f46; }
+    .badge-askreddit { background: #fce7f3; color: #9f1239; }
+    .post-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-small {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-view {
+      background: #667eea;
+      color: white;
+    }
+    .btn-view:hover {
+      background: #5568d3;
+    }
+    .btn-preview {
+      background: #8b5cf6;
+      color: white;
+    }
+    .btn-preview:hover {
+      background: #7c3aed;
+    }
+    .btn-delete {
+      background: #ef4444;
+      color: white;
+    }
+    .btn-delete:hover {
+      background: #dc2626;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+    .modal-header {
+      padding: 24px;
+      border-bottom: 2px solid #e0e7ff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: white;
+      z-index: 1;
+    }
+    .modal-header h3 {
+      color: #667eea;
+      margin: 0;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #666;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+    .modal-close:hover {
+      background: #f8f9ff;
+      color: #333;
+    }
+    .modal-body {
+      padding: 24px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #667eea;
+    }
   </style>
 </head>
 <body>
@@ -263,6 +442,30 @@ app.get('/admin', (req, res) => {
         <button class="quick-btn" onclick="checkHealth()">Health Check</button>
       </div>
     </div>
+
+    <div class="section">
+      <h2>📝 Post Manager</h2>
+      <input type="text" id="searchPosts" class="search-box" placeholder="🔍 Search posts by title, subreddit, or content...">
+      
+      <div id="postsContainer">
+        <div class="loading">
+          <div>⏳ Loading posts...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div id="previewModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📄 Post Preview</h3>
+        <button class="modal-close" onclick="closePreview()">×</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <div class="loading">Loading...</div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -292,6 +495,7 @@ app.get('/admin', (req, res) => {
           statusEl.innerHTML = '✅ ' + (data.message || 'Content generated successfully!') + 
             '<br><small>Total: ' + (data.data?.totalPosts || 0) + ' posts, Recent: ' + (data.data?.recentPosts || 0) + '</small>';
           updateStats();
+          loadPosts(); // Reload post manager
         } else {
           statusEl.className = 'status error';
           statusEl.innerHTML = '❌ ' + (data.error || 'Generation failed') + 
@@ -331,9 +535,351 @@ app.get('/admin', (req, res) => {
 
     // Load stats on page load
     updateStats();
+
+    // ===== POST MANAGER =====
+    let allPosts = [];
+
+    async function loadPosts() {
+      try {
+        const response = await fetch('/api/posts');
+        const data = await response.json();
+        allPosts = data.posts || [];
+        displayPosts(allPosts);
+        document.getElementById('postCount').textContent = allPosts.length;
+      } catch (error) {
+        console.error('Failed to load posts:', error);
+        document.getElementById('postsContainer').innerHTML = 
+          '<div class="empty-state"><div class="empty-state-icon">❌</div><div>Failed to load posts</div></div>';
+      }
+    }
+
+    function displayPosts(posts) {
+      const container = document.getElementById('postsContainer');
+      
+      if (posts.length === 0) {
+        container.innerHTML = 
+          '<div class="empty-state"><div class="empty-state-icon">📭</div><div>No posts found</div><small>Generate content to see posts here</small></div>';
+        return;
+      }
+
+      const html = \`
+        <div class="post-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Subreddit</th>
+                <th>Score</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              \${posts.map(post => \`
+                <tr>
+                  <td>
+                    <div class="post-title" title="\${escapeHtml(post.title)}">
+                      \${escapeHtml(post.title)}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="post-badge badge-\${post.subreddit.toLowerCase()}">
+                      r/\${escapeHtml(post.subreddit)}
+                    </span>
+                  </td>
+                  <td>\${post.score} ↑</td>
+                  <td>\${post.date}</td>
+                  <td>
+                    <div class="post-actions">
+                      <button class="btn-small btn-view" onclick="window.open('/posts/\${post.slug}.html', '_blank')" title="View Live">
+                        👁️ View
+                      </button>
+                      <button class="btn-small btn-preview" onclick="previewPost('\${post.slug}')" title="Preview Formatted">
+                        🔍 Preview
+                      </button>
+                      <button class="btn-small btn-delete" onclick="deletePost('\${post.slug}')" title="Delete Post">
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              \`).join('')}
+            </tbody>
+          </table>
+        </div>
+      \`;
+      
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Search functionality
+    document.getElementById('searchPosts')?.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      if (!query) {
+        displayPosts(allPosts);
+        return;
+      }
+
+      const filtered = allPosts.filter(post => 
+        post.title.toLowerCase().includes(query) ||
+        post.subreddit.toLowerCase().includes(query) ||
+        post.summaryPreview.toLowerCase().includes(query)
+      );
+      
+      displayPosts(filtered);
+    });
+
+    // Preview post
+    async function previewPost(slug) {
+      const modal = document.getElementById('previewModal');
+      const modalBody = document.getElementById('modalBody');
+      
+      modal.classList.add('active');
+      modalBody.innerHTML = '<div class="loading">⏳ Loading preview...</div>';
+      
+      try {
+        const response = await fetch(\`/api/posts/\${slug}\`);
+        const data = await response.json();
+        
+        if (response.ok) {
+          modalBody.innerHTML = data.content;
+        } else {
+          modalBody.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div>Failed to load preview</div></div>';
+        }
+      } catch (error) {
+        console.error('Preview error:', error);
+        modalBody.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div>Error loading preview</div></div>';
+      }
+    }
+
+    function closePreview() {
+      const modal = document.getElementById('previewModal');
+      modal.classList.remove('active');
+    }
+
+    // Close modal on background click
+    document.getElementById('previewModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'previewModal') {
+        closePreview();
+      }
+    });
+
+    // Delete post
+    async function deletePost(slug) {
+      const post = allPosts.find(p => p.slug === slug);
+      if (!post) return;
+
+      if (!confirm(\`Are you sure you want to delete "\\n\\n\${post.title}\\"?\\n\\nThis action cannot be undone.\`)) {
+        return;
+      }
+
+      const secret = document.getElementById('cronSecret').value;
+      if (!secret) {
+        alert('⚠️ Please enter your cron secret first');
+        return;
+      }
+
+      try {
+        const response = await fetch(\`/api/posts/\${slug}\`, {
+          method: 'DELETE',
+          headers: { 'x-cron': secret }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('✅ Post deleted successfully!');
+          loadPosts(); // Reload the list
+          updateStats(); // Update stats
+        } else {
+          alert('❌ Failed to delete: ' + data.error);
+        }
+      } catch (error) {
+        alert('❌ Error: ' + error.message);
+      }
+    }
+
+    // Load posts on page load
+    loadPosts();
   </script>
 </body>
 </html>`);
+});
+
+// API: List all posts with metadata
+app.get('/api/posts', async (req, res) => {
+  try {
+    const postsDir = path.join(SITE_DIR, 'posts');
+    const metadataPath = path.join(SITE_DIR, 'metadata.json');
+    
+    // Check if posts directory exists
+    if (!await fs.pathExists(postsDir)) {
+      return res.json({ posts: [], total: 0 });
+    }
+    
+    // Read metadata if exists
+    let metadata = {};
+    if (await fs.pathExists(metadataPath)) {
+      metadata = await fs.readJson(metadataPath);
+    }
+    
+    // Get all HTML files
+    const files = await fs.readdir(postsDir);
+    const htmlFiles = files.filter(f => f.endsWith('.html'));
+    
+    // Build post list with metadata
+    const posts = htmlFiles.map(file => {
+      const slug = file.replace('.html', '');
+      const meta = metadata[slug] || {};
+      return {
+        slug,
+        title: meta.title || slug,
+        subreddit: meta.subreddit || 'unknown',
+        score: meta.score || 0,
+        date: meta.date || 'Unknown',
+        created: meta.created || 0,
+        url: meta.url || '',
+        summaryPreview: meta.summary ? meta.summary.substring(0, 100) + '...' : ''
+      };
+    });
+    
+    // Sort by creation time (newest first)
+    posts.sort((a, b) => b.created - a.created);
+    
+    res.json({ posts, total: posts.length });
+  } catch (error) {
+    console.error('Error listing posts:', error);
+    res.status(500).json({ error: 'Failed to list posts', message: error.message });
+  }
+});
+
+// API: Get individual post content
+app.get('/api/posts/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const postPath = path.join(SITE_DIR, 'posts', `${slug}.html`);
+    const metadataPath = path.join(SITE_DIR, 'metadata.json');
+    
+    if (!await fs.pathExists(postPath)) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    const content = await fs.readFile(postPath, 'utf-8');
+    
+    // Get metadata
+    let metadata = {};
+    if (await fs.pathExists(metadataPath)) {
+      const allMeta = await fs.readJson(metadataPath);
+      metadata = allMeta[slug] || {};
+    }
+    
+    res.json({
+      slug,
+      content,
+      metadata
+    });
+  } catch (error) {
+    console.error('Error getting post:', error);
+    res.status(500).json({ error: 'Failed to get post', message: error.message });
+  }
+});
+
+// API: Delete post
+app.delete('/api/posts/:slug', async (req, res) => {
+  const cronHeader = req.headers['x-cron'];
+  
+  if (cronHeader !== CRON_SECRET) {
+    return res.status(403).json({ error: 'Forbidden: Invalid x-cron header' });
+  }
+  
+  try {
+    const { slug } = req.params;
+    const postPath = path.join(SITE_DIR, 'posts', `${slug}.html`);
+    const metadataPath = path.join(SITE_DIR, 'metadata.json');
+    
+    if (!await fs.pathExists(postPath)) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    // Delete the post file
+    await fs.remove(postPath);
+    
+    // Remove from metadata
+    let allPosts = [];
+    if (await fs.pathExists(metadataPath)) {
+      const metadata = await fs.readJson(metadataPath);
+      delete metadata[slug];
+      await fs.writeJson(metadataPath, metadata);
+      
+      // Rebuild allPosts array from remaining metadata
+      allPosts = Object.entries(metadata).map(([slug, meta]) => ({
+        slug,
+        title: meta.title,
+        subreddit: meta.subreddit,
+        score: meta.score,
+        date: meta.date,
+        created: meta.created,
+        summary: meta.summary
+      }));
+    }
+    
+    // Regenerate index.html with remaining posts
+    allPosts.sort((a, b) => b.created - a.created);
+    const indexTemplate = (posts) => `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ctrl Scroll - AI-Curated Reddit News</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .header h1 { color: #333; margin-bottom: 10px; }
+    .header p { color: #666; }
+    .posts { display: grid; gap: 20px; }
+    .post-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.2s; }
+    .post-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    .post-card h2 { margin-top: 0; }
+    .post-card h2 a { color: #333; text-decoration: none; }
+    .post-card h2 a:hover { color: #ff4500; }
+    .post-meta { color: #666; font-size: 14px; margin-bottom: 10px; }
+    .post-summary { color: #555; }
+    .footer { text-align: center; margin-top: 60px; padding: 20px; color: #666; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📜 Ctrl Scroll</h1>
+    <p>AI-curated summaries from Reddit's top discussions</p>
+  </div>
+  <div class="posts">
+    ${posts.map(p => `
+    <div class="post-card">
+      <h2><a href="/posts/${p.slug}.html">${p.title.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}</a></h2>
+      <div class="post-meta">r/${p.subreddit} • ${p.score} upvotes • ${p.date}</div>
+      <div class="post-summary">${(p.summary || '').substring(0, 200).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}...</div>
+    </div>
+    `).join('')}
+  </div>
+  <div class="footer">
+    Generated by Ctrl Scroll • Content sourced from Reddit
+  </div>
+</body>
+</html>`;
+    
+    await fs.writeFile(path.join(SITE_DIR, 'index.html'), indexTemplate(allPosts.slice(0, 30)));
+    console.log(`🗑️  Deleted post: ${slug} and regenerated index`);
+    res.json({ success: true, message: `Post ${slug} deleted` });
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({ error: 'Failed to delete post', message: error.message });
+  }
 });
 
 // Health check endpoint

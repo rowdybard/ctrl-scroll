@@ -304,6 +304,22 @@ async function generate() {
   allPosts.sort((a, b) => b.created - a.created);
   const recentPosts = allPosts.slice(0, 30);
   
+  // Write metadata file for post manager
+  console.log('💾 Writing metadata.json...');
+  const metadata = {};
+  allPosts.forEach(post => {
+    metadata[post.slug] = {
+      title: post.title,
+      subreddit: post.subreddit,
+      score: post.score,
+      date: post.date,
+      created: post.created,
+      url: post.url,
+      summary: post.summary
+    };
+  });
+  await fs.writeFile(path.join(SITE_DIR, 'metadata.json'), JSON.stringify(metadata, null, 2));
+  
   // Write index page
   console.log('📝 Writing index.html...');
   await fs.writeFile(path.join(SITE_DIR, 'index.html'), indexTemplate(recentPosts));
