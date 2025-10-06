@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ctrlscroll-web
+    name: ctrlscroll
     env: node
     plan: starter
     rootDir: apps/web
@@ -10,44 +10,8 @@ services:
       - key: PUBLIC_ORIGIN
         fromService:
           type: web
-          name: ctrlscroll-web
+          name: ctrlscroll
           property: url
-      - key: DATA_DIR
-        value: /data
-    disk:
-      name: ctrlscroll-disk
-      mountPath: /data
-      sizeGB: 1
-
-  - type: web
-    name: ctrlscroll-api
-    env: node
-    plan: starter
-    rootDir: apps/api
-    buildCommand: pnpm install --frozen-lockfile && pnpm build
-    startCommand: pnpm start
-    envVars:
-      - key: DATA_DIR
-        value: /data
-      - key: BASIC_AUTH_USER
-        sync: false
-      - key: BASIC_AUTH_PASS
-        sync: false
-      - key: PUBLIC_ORIGIN
-        value: https://ctrlscroll.com
-    disk:
-      name: ctrlscroll-disk
-      mountPath: /data
-      sizeGB: 1
-
-  - type: worker
-    name: ctrlscroll-worker
-    env: node
-    plan: starter
-    rootDir: apps/worker
-    buildCommand: pnpm install --frozen-lockfile && pnpm build
-    startCommand: pnpm start
-    envVars:
       - key: DATA_DIR
         value: /data
       - key: REDDIT_CLIENT_ID
@@ -64,8 +28,6 @@ services:
         sync: false
       - key: BASIC_AUTH_PASS
         sync: false
-      - key: PUBLIC_ORIGIN
-        value: https://ctrlscroll.com
     disk:
       name: ctrlscroll-disk
       mountPath: /data
@@ -74,19 +36,19 @@ services:
 scheduledJobs:
   - name: ingest-watchlists
     schedule: "*/5 * * * *"
-    webServiceName: ctrlscroll-worker
-    endpoint: /internal/run/ingest
+    webServiceName: ctrlscroll
+    endpoint: /api/ingest
     headers:
       Authorization: "Basic {{BASIC_AUTH_USER}}:{{BASIC_AUTH_PASS}}"
   - name: refresh-hot
     schedule: "*/10 * * * *"
-    webServiceName: ctrlscroll-worker
-    endpoint: /internal/run/refresh
+    webServiceName: ctrlscroll
+    endpoint: /api/refresh
     headers:
       Authorization: "Basic {{BASIC_AUTH_USER}}:{{BASIC_AUTH_PASS}}"
   - name: rebuild-feeds
     schedule: "@hourly"
-    webServiceName: ctrlscroll-worker
-    endpoint: /internal/run/feeds
+    webServiceName: ctrlscroll
+    endpoint: /api/feeds
     headers:
       Authorization: "Basic {{BASIC_AUTH_USER}}:{{BASIC_AUTH_PASS}}"

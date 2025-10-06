@@ -1,12 +1,14 @@
 # Ctrl+Scroll V2
 
-A production-grade Reddit content aggregator with AI summarization, built as a TypeScript monorepo for deployment on Render.
+A production-grade Reddit content aggregator with AI summarization, built as a single Next.js service for cost-effective deployment on Render.
 
 ## 🏗️ Architecture
 
-- **Worker**: Reddit API ingestion, content processing, and disk persistence
-- **API**: Public REST endpoints for posts, feeds, and metrics
-- **Web**: Next.js frontend with A/B testing and tracking
+- **Web Service**: All-in-one Next.js app with:
+  - Frontend: React components with A/B testing
+  - API Routes: Public REST endpoints for posts, feeds, and metrics  
+  - Worker Functions: Reddit ingestion, processing, and disk persistence
+  - Background Jobs: Scheduled via Render cron jobs
 - **Shared**: Common utilities (atomic writes, simhash, scoring)
 
 ## 🚀 Quick Start
@@ -28,15 +30,12 @@ A production-grade Reddit content aggregator with AI summarization, built as a T
    - Create a "script" app
    - Add credentials to `.env`
 
-4. **Start all services:**
+4. **Start the service:**
    ```bash
    pnpm dev
    ```
 
-5. **Visit:** 
-   - Web: http://localhost:3000
-   - API: http://localhost:3001
-   - Worker: http://localhost:3002
+5. **Visit:** http://localhost:3000
 
 ## 📦 Deploy to Render
 
@@ -55,11 +54,9 @@ A production-grade Reddit content aggregator with AI summarization, built as a T
    ```
 
 4. **Deploy!** Render will use `render.yaml` to create:
-   - 1× Web service (Next.js frontend)
-   - 1× API service (REST endpoints)
-   - 1× Worker service (content processing)
+   - 1× Web service (Next.js with all functionality)
    - 3× Scheduled jobs (ingest, refresh, feeds)
-   - 1× Persistent disk (shared across services)
+   - 1× Persistent disk for data storage
 
 ## 🛠️ Features
 
@@ -89,7 +86,7 @@ A production-grade Reddit content aggregator with AI summarization, built as a T
 
 ## 🔧 Configuration
 
-Edit `apps/worker/src/config.ts` to customize:
+Edit `apps/web/lib/config.ts` to customize:
 
 - **Watchlists**: Subreddits to monitor
 - **Rate Limits**: API request throttling
