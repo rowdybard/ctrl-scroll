@@ -104,32 +104,55 @@ function escapeHtml(text) {
 async function fetchRedditPosts(subreddit) {
   const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=25`;
   console.log(`  📡 Fetching: ${url}`);
+  console.log(`  🔑 Using User-Agent: ${USER_AGENT.substring(0, 50)}...`);
+  
   const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+  console.log(`  📊 Response status: ${response.status} ${response.statusText}`);
+  
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ Reddit API error ${response.status}: ${errorText}`);
+    console.error(`❌ Reddit API error ${response.status}: ${errorText.substring(0, 200)}`);
     throw new Error(`Reddit API error: ${response.status}`);
   }
+  
   const data = await response.json();
   console.log(`  📦 Received ${data.data.children.length} posts from r/${subreddit}`);
+  
+  if (data.data.children.length === 0) {
+    console.log(`  ⚠️ WARNING: Reddit returned 0 posts for r/${subreddit}`);
+  }
+  
   return data.data.children.map(c => c.data);
 }
 
 function filterPost(post) {
   // Check NSFW
-  if (post.over_18) return false;
+  if (post.over_18) {
+    console.log(`    ❌ Filtered (NSFW): ${post.title.substring(0, 50)}`);
+    return false;
+  }
   
   // Check age
   const ageHours = (Date.now() - post.created_utc * 1000) / (1000 * 60 * 60);
-  if (ageHours > MAX_AGE_HOURS) return false;
+  if (ageHours > MAX_AGE_HOURS) {
+    console.log(`    ❌ Filtered (too old - ${Math.round(ageHours)}h): ${post.title.substring(0, 50)}`);
+    return false;
+  }
   
   // Check score
-  if (post.score < MIN_SCORE) return false;
+  if (post.score < MIN_SCORE) {
+    console.log(`    ❌ Filtered (low score ${post.score}): ${post.title.substring(0, 50)}`);
+    return false;
+  }
   
   // Check denylist
   const text = `${post.title} ${post.selftext}`.toLowerCase();
-  if (DENYLIST.some(word => text.includes(word))) return false;
+  if (DENYLIST.some(word => text.includes(word))) {
+    console.log(`    ❌ Filtered (denylist): ${post.title.substring(0, 50)}`);
+    return false;
+  }
   
+  console.log(`    ✅ Passed (score: ${post.score}, age: ${Math.round(ageHours)}h): ${post.title.substring(0, 50)}`);
   return true;
 }
 
@@ -164,6 +187,9 @@ async function generate() {
   console.log(`📂 Site directory: ${SITE_DIR}`);
   console.log(`🔑 OpenAI API Key: ${process.env.OPENAI_API_KEY ? 'Set ✓' : 'MISSING ✗'}`);
   console.log(`📋 Allowlist: ${ALLOWLIST.join(', ')}`);
+  console.log(`🔧 Filters: MIN_SCORE=${MIN_SCORE}, MAX_AGE_HOURS=${MAX_AGE_HOURS}, MAX_POSTS=${MAX_POSTS}`);
+  console.log(`🚫 Denylist: ${DENYLIST.join(', ')}`);
+  console.log(`👤 User-Agent: ${USER_AGENT.substring(0, 60)}...`);
   
   // Ensure directories exist
   await fs.ensureDir(SITE_DIR);
