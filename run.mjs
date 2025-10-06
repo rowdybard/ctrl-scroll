@@ -172,9 +172,14 @@ async function generate() {
   const allPosts = [];
   
   // Fetch from each subreddit
-  for (const subreddit of ALLOWLIST) {
+  for (let i = 0; i < ALLOWLIST.length; i++) {
+    const subreddit = ALLOWLIST[i];
     console.log(`📡 Fetching r/${subreddit}...`);
     try {
+      // Rate limit between subreddit fetches (be respectful to Reddit)
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
       const posts = await fetchRedditPosts(subreddit);
       console.log(`  🔍 Filtering ${posts.length} posts...`);
       const filtered = posts.filter(filterPost).slice(0, MAX_POSTS);
