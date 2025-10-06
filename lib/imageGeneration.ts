@@ -16,15 +16,24 @@ interface ArticleImages {
   context?: ImageGenerationResult;
 }
 
-const openai = new OpenAI({
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
+}) : null;
 
 export async function generateArticleImages(
   title: string,
   content: string,
   topic: string
 ): Promise<ArticleImages> {
+  // If OpenAI is not available, return fallback images
+  if (!openai) {
+    console.log('OpenAI not available, using fallback images');
+    return {
+      hero: await generateFallbackImage(title, 'hero'),
+      context: await generateFallbackImage(title, 'context')
+    };
+  }
+
   try {
     // Generate hero image prompt
     const heroPrompt = await generateImagePrompt(title, content, 'hero');
@@ -57,6 +66,10 @@ async function generateImagePrompt(
   content: string,
   type: 'hero' | 'context'
 ): Promise<string> {
+  if (!openai) {
+    return generateDefaultPrompt(title, type);
+  }
+
   const systemPrompt = `You are an expert at creating image prompts for AI art generation. 
 Create a detailed, visual prompt for a ${type} image that illustrates the article content.
 Focus on concrete, visual elements. Avoid abstract concepts or opinions.
@@ -94,6 +107,10 @@ function generateDefaultPrompt(title: string, type: 'hero' | 'context'): string 
 }
 
 async function generateImage(prompt: string, filename: string): Promise<ImageGenerationResult> {
+  if (!openai) {
+    return generateFallbackImage(filename, 'hero');
+  }
+
   try {
     const response = await openai.images.generate({
       model: 'dall-e-3',
@@ -119,7 +136,7 @@ async function generateImage(prompt: string, filename: string): Promise<ImageGen
     };
   } catch (error) {
     console.error(`Failed to generate image for ${filename}:`, error);
-    throw error;
+    return generateFallbackImage(filename, 'hero');
   }
 }
 
@@ -185,6 +202,15 @@ export async function generateRichContext(
   relatedTopics: string[];
   timeline?: string[];
 }> {
+  if (!openai) {
+    return {
+      background: `Background information about ${topic}`,
+      keyPoints: [`Key development in ${topic}`, `Recent updates in ${topic}`],
+      relatedTopics: [topic, 'technology', 'innovation'],
+      timeline: []
+    };
+  }
+
   try {
     const systemPrompt = `You are a factual content researcher. Provide objective context about the topic.
 Do not express opinions or judgments. Focus on verifiable facts and information.
