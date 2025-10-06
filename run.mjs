@@ -176,7 +176,9 @@ async function fetchRedditPosts(subreddit) {
   return data.data.children.map(c => c.data);
 }
 
-function filterPost(post) {
+async function filterPost(post, usedPostIds) {
+  // Note: Duplicate check is now done in generate() to track stats
+  
   // Check NSFW
   if (post.over_18) {
     console.log(`    ❌ Filtered (NSFW): ${post.title.substring(0, 50)}`);
@@ -203,7 +205,7 @@ function filterPost(post) {
     return false;
   }
   
-  console.log(`    ✅ Passed (score: ${post.score}, age: ${Math.round(ageHours)}h): ${post.title.substring(0, 50)}`);
+  console.log(`    ✅ Passed (ID: ${post.id}, score: ${post.score}, age: ${Math.round(ageHours)}h): ${post.title.substring(0, 50)}`);
   return true;
 }
 
@@ -246,7 +248,23 @@ async function generate() {
   await fs.ensureDir(SITE_DIR);
   await fs.ensureDir(path.join(SITE_DIR, 'posts'));
   
+  // Load used post IDs to prevent duplicates
+  const usedPostsPath = path.join(SITE_DIR, 'used_posts.json');
+  let usedPostIds = new Set();
+  
+  if (await fs.pathExists(usedPostsPath)) {
+    try {
+      const usedData = await fs.readJson(usedPostsPath);
+      usedPostIds = new Set(usedData.ids || []);
+      console.log(`📝 Loaded ${usedPostIds.size} previously used post IDs`);
+    } catch (error) {
+      console.error('⚠️ Failed to load used posts, starting fresh:', error.message);
+    }
+  }
+  
   const allPosts = [];
+  const newPostIds = [];
+  let duplicatesPreventedCount = 0;
   
   // Fetch from each subreddit
   for (let i = 0; i < ALLOWLIST.length; i++) {
@@ -259,7 +277,23 @@ async function generate() {
       }
       const posts = await fetchRedditPosts(subreddit);
       console.log(`  🔍 Filtering ${posts.length} posts...`);
-      const filtered = posts.filter(filterPost).slice(0, MAX_POSTS);
+      
+      // Filter posts asynchronously and track duplicates
+      const filtered = [];
+      for (const post of posts) {
+        // Check if duplicate first
+        if (usedPostIds.has(post.id)) {
+          duplicatesPreventedCount++;
+          console.log(`    ❌ Filtered (already used - ID: ${post.id}): ${post.title.substring(0, 50)}`);
+          continue;
+        }
+        
+        if (await filterPost(post, usedPostIds)) {
+          filtered.push(post);
+          if (filtered.length >= MAX_POSTS) break;
+        }
+      }
+      
       console.log(`  ✓ ${filtered.length} posts passed filters`);
       
       for (const post of filtered) {
@@ -281,6 +315,10 @@ async function generate() {
         
         await fs.writeFile(path.join(SITE_DIR, 'posts', `${slug}.html`), postHtml);
         
+        // Track this post
+        newPostIds.push(post.id);
+        usedPostIds.add(post.id);
+        
         allPosts.push({
           title: post.title,
           slug,
@@ -289,7 +327,8 @@ async function generate() {
           score: post.score,
           date,
           url: `https://reddit.com${post.permalink}`,
-          created: post.created_utc
+          created: post.created_utc,
+          redditId: post.id
         });
         
         // Rate limit
@@ -304,6 +343,29 @@ async function generate() {
   allPosts.sort((a, b) => b.created - a.created);
   const recentPosts = allPosts.slice(0, 30);
   
+  // Save used post IDs with duplicate tracking
+  console.log('💾 Saving used post IDs...');
+  const allUsedIds = Array.from(usedPostIds);
+  
+  // Load existing duplicates prevented count and add to it
+  let totalDuplicatesPrevented = duplicatesPreventedCount;
+  if (await fs.pathExists(usedPostsPath)) {
+    try {
+      const existingData = await fs.readJson(usedPostsPath);
+      totalDuplicatesPrevented += (existingData.duplicatesPrevented || 0);
+    } catch (e) {
+      console.error('⚠️ Could not load previous duplicate count');
+    }
+  }
+  
+  await fs.writeFile(usedPostsPath, JSON.stringify({ 
+    ids: allUsedIds,
+    lastUpdated: new Date().toISOString(),
+    totalUsed: allUsedIds.length,
+    duplicatesPrevented: totalDuplicatesPrevented
+  }, null, 2));
+  console.log(`📝 Total unique posts tracked: ${allUsedIds.length} (added ${newPostIds.length} new, prevented ${duplicatesPreventedCount} duplicates)`);
+  
   // Write metadata file for post manager
   console.log('💾 Writing metadata.json...');
   const metadata = {};
@@ -315,7 +377,8 @@ async function generate() {
       date: post.date,
       created: post.created,
       url: post.url,
-      summary: post.summary
+      summary: post.summary,
+      redditId: post.redditId
     };
   });
   await fs.writeFile(path.join(SITE_DIR, 'metadata.json'), JSON.stringify(metadata, null, 2));

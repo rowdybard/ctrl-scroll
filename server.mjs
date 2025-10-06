@@ -183,7 +183,7 @@ app.get('/admin', (req, res) => {
     }
     .stats {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
     }
     .stat-card {
@@ -574,6 +574,14 @@ app.get('/admin', (req, res) => {
           <div class="stat-value" id="lastGen">--</div>
           <div class="stat-label">Last Generated</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-value" id="usedPostCount">--</div>
+          <div class="stat-label">Unique Stories Used</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="duplicatesPrevented">--</div>
+          <div class="stat-label">Duplicates Prevented</div>
+        </div>
       </div>
     </div>
 
@@ -693,6 +701,18 @@ app.get('/admin', (req, res) => {
         const postCards = doc.querySelectorAll('.post-card');
         document.getElementById('postCount').textContent = postCards.length;
         document.getElementById('lastGen').textContent = 'Now';
+        
+        // Load used posts stats
+        try {
+          const usedResponse = await fetch('/api/used-posts-stats');
+          const usedData = await usedResponse.json();
+          if (usedResponse.ok) {
+            document.getElementById('usedPostCount').textContent = usedData.totalUsed || 0;
+            document.getElementById('duplicatesPrevented').textContent = usedData.duplicatesPrevented || 0;
+          }
+        } catch (e) {
+          console.error('Failed to load used posts stats:', e);
+        }
       } catch (error) {
         console.error('Failed to update stats:', error);
       }
@@ -1165,6 +1185,28 @@ app.get('/api/posts/:slug', async (req, res) => {
   } catch (error) {
     console.error('Error getting post:', error);
     res.status(500).json({ error: 'Failed to get post', message: error.message });
+  }
+});
+
+// API: Get used posts stats
+app.get('/api/used-posts-stats', async (req, res) => {
+  try {
+    const usedPostsPath = path.join(SITE_DIR, 'used_posts.json');
+    
+    if (!await fs.pathExists(usedPostsPath)) {
+      return res.json({ totalUsed: 0, duplicatesPrevented: 0, lastUpdated: null });
+    }
+    
+    const data = await fs.readJson(usedPostsPath);
+    
+    res.json({
+      totalUsed: data.totalUsed || data.ids?.length || 0,
+      duplicatesPrevented: data.duplicatesPrevented || 0,
+      lastUpdated: data.lastUpdated || null
+    });
+  } catch (error) {
+    console.error('Error reading used posts stats:', error);
+    res.status(500).json({ error: 'Failed to read stats' });
   }
 });
 
