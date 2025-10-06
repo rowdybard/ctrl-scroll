@@ -1,305 +1,83 @@
-'use client';
+import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import ArticleLayoutF from '@/components/ArticleLayoutF';
+import ImpressionsBeacon from '@/components/ImpressionsBeacon';
+import { getPost, getRelated, getNeighbors, mapToArticleSource, trackEvent } from '@/lib/api';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { trackClick } from '@/lib/ab';
-
-interface PostDetail {
-  id: string;
-  title: string;
-  micro: string;
-  bullets: string[];
-  createdUtc: number;
-  subreddit: string;
-  score: number;
-  tags: string[];
-  permalink: string;
-  originalUrl?: string;
-  externalTitle?: string;
-  publishedAt: string;
-  headlines: {
-    A: string;
-    B: string;
-    C: string;
-  };
-  images?: {
-    hero: {
-      url: string;
-      prompt: string;
-      localPath: string;
-    };
-    context?: {
-      url: string;
-      prompt: string;
-      localPath: string;
-    };
-  };
-  richContext?: {
-    background: string;
-    keyPoints: string[];
-    relatedTopics: string[];
-    timeline?: string[];
-  };
+interface PageProps {
+  params: Promise<{ id: string }>;
 }
 
-export default function PostPage() {
-  const params = useParams();
-  const postId = params.id as string;
-  
-  const [post, setPost] = useState<PostDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  try {
+    const { id } = await params;
+    const post = await getPost(id);
+    
+    return {
+      title: post.title,
+      description: post.micro,
+      openGraph: {
+        title: post.title,
+        description: post.micro,
+        type: 'article',
+        publishedTime: new Date(post.createdUtc * 1000).toISOString(),
+        authors: post.subreddit ? [`r/${post.subreddit}`] : undefined,
+        tags: post.tags,
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: post.title,
+        description: post.micro,
+      },
+    };
+  } catch {
+    return {
+      title: 'Article Not Found',
+      description: 'The requested article could not be found.',
+    };
+  }
+}
 
-  useEffect(() => {
-    async function fetchPost() {
+export default async function PostPage({ params }: PageProps) {
+  try {
+    const { id } = await params;
+    
+    // Fetch post data
+    const post = await getPost(id);
+    
+    // Map to ArticleSource format
+    const article = mapToArticleSource(post);
+    
+    // Fetch related posts and neighbors
+    const [related, neighbors] = await Promise.all([
+      getRelated(post.subreddit || 'technology', 6),
+      getNeighbors(id)
+    ]);
+    
+    // Track click events handler
+    const handleTrackClick = async (postId: string, variant: string, event: 'click') => {
       try {
-        const response = await fetch(`/api/v1/posts/${postId}`);
-        if (!response.ok) {
-          throw new Error('Post not found');
-        }
-        const data = await response.json();
-        setPost(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
+        await trackEvent(postId, variant as 'F' | 'A' | 'B' | 'C', event);
+      } catch (error) {
+        console.warn('Failed to track click:', error);
       }
-    }
+    };
 
-    if (postId) {
-      fetchPost();
-    }
-  }, [postId]);
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const isRecent = (timestamp: number) => {
-    const now = Date.now() / 1000;
-    return (now - timestamp) < 15 * 60; // 15 minutes
-  };
-
-  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading post...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !post) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Post Not Found</h1>
-          <p className="text-gray-600 mb-4">{error || 'The requested post could not be found.'}</p>
-          <a href="/" className="btn btn-primary">← Back to Home</a>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <a href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700">
-            ← Back to Ctrl+Scroll
-          </a>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <article className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-          {/* Post Header */}
-          <header className="mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="badge badge-reddit">r/{post.subreddit}</span>
-              {isRecent(post.createdUtc) && (
-                <span className="badge badge-live">LIVE</span>
-              )}
-              <span className="text-sm text-gray-500">
-                {post.score} upvotes
-              </span>
-            </div>
-            
-            <h1 className="text-3xl font-bold text-gray-900 mb-4 leading-tight">
-              {post.title}
-            </h1>
-            
-            <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
-              <span>Posted {formatDate(post.createdUtc)}</span>
-              <span>•</span>
-              <span>Published {new Date(post.publishedAt).toLocaleDateString()}</span>
-            </div>
-          </header>
-
-          {/* Hero Image */}
-          {post.images?.hero && (
-            <div className="mb-8">
-              <div className="relative h-64 w-full overflow-hidden rounded-lg">
-                <img 
-                  src={`/api/images/${post.images.hero.localPath.split('/').pop()}`}
-                  alt={post.title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-              </div>
-              <p className="text-sm text-gray-500 mt-2 italic">
-                AI-generated image: {post.images.hero.prompt}
-              </p>
-            </div>
-          )}
-
-          {/* Summary */}
-          <div className="prose prose-lg max-w-none mb-8">
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-              <p className="text-blue-900 font-medium m-0">{post.micro}</p>
-            </div>
-            
-            {post.bullets.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Key Points:</h3>
-                <ul className="list-none space-y-2">
-                  {post.bullets.map((bullet, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <span className="text-blue-600 mt-1">•</span>
-                      <span className="text-gray-700">{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {/* Rich Context */}
-          {post.richContext && (
-            <div className="mb-8 p-6 bg-gray-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Background & Context</h3>
-              
-              {post.richContext.background && (
-                <div className="mb-4">
-                  <p className="text-gray-700 leading-relaxed">{post.richContext.background}</p>
-                </div>
-              )}
-              
-              {post.richContext.keyPoints && post.richContext.keyPoints.length > 0 && (
-                <div className="mb-4">
-                  <h4 className="text-md font-medium text-gray-900 mb-2">Key Developments:</h4>
-                  <ul className="list-disc list-inside space-y-1">
-                    {post.richContext.keyPoints.map((point, index) => (
-                      <li key={index} className="text-gray-700 text-sm">{point}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {post.richContext.relatedTopics && post.richContext.relatedTopics.length > 0 && (
-                <div>
-                  <h4 className="text-md font-medium text-gray-900 mb-2">Related Topics:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {post.richContext.relatedTopics.map((topic, index) => (
-                      <span key={index} className="badge bg-blue-100 text-blue-800 text-xs">
-                        {topic}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Context Image */}
-          {post.images?.context && (
-            <div className="mb-8">
-              <div className="relative h-48 w-full overflow-hidden rounded-lg">
-                <img 
-                  src={`/api/images/${post.images.context.localPath.split('/').pop()}`}
-                  alt="Context illustration"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              </div>
-              <p className="text-sm text-gray-500 mt-2 italic">
-                Context image: {post.images.context.prompt}
-              </p>
-            </div>
-          )}
-
-          {/* Tags */}
-          {post.tags.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">Topics:</h3>
-              <div className="flex flex-wrap gap-2">
-                {post.tags.map((tag, index) => (
-                  <span key={index} className="badge bg-gray-100 text-gray-800">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Attribution */}
-          <footer className="border-t pt-6">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">Sources:</h3>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-gray-600">Reddit post:</span>{' '}
-                  <a 
-                    href={`https://reddit.com/r/${post.subreddit}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700"
-                    onClick={() => trackClick(post.id, 'A')}
-                  >
-                    r/{post.subreddit}
-                  </a>
-                </div>
-                
-                {post.originalUrl && (
-                  <div>
-                    <span className="text-gray-600">Original link:</span>{' '}
-                    <a 
-                      href={post.originalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-700"
-                      onClick={() => trackClick(post.id, 'B')}
-                    >
-                      {post.externalTitle || 'View original'}
-                    </a>
-                  </div>
-                )}
-              </div>
-              
-              <div className="mt-3 text-xs text-gray-500">
-                Content summarized by Ctrl+Scroll • Reddit attribution required
-              </div>
-            </div>
-          </footer>
-        </article>
-
-        {/* Schema.org JSON-LD */}
+      <>
+        {/* Impression tracking beacon */}
+        <ImpressionsBeacon postId={id} variant="F" />
+        
+        {/* Main article layout */}
+        <ArticleLayoutF
+          article={article}
+          related={related}
+          prevNeighbor={neighbors.prev}
+          nextNeighbor={neighbors.next}
+          onTrackClick={handleTrackClick}
+        />
+        
+        {/* JSON-LD structured data */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -309,24 +87,32 @@ export default function PostPage() {
               "headline": post.title,
               "description": post.micro,
               "datePublished": new Date(post.createdUtc * 1000).toISOString(),
-              "dateModified": post.publishedAt,
+              "dateModified": new Date(post.publishedAt).toISOString(),
               "author": {
                 "@type": "Organization",
-                "name": `r/${post.subreddit}`
+                "name": post.subreddit ? `r/${post.subreddit}` : "Ctrl+Scroll"
               },
               "publisher": {
                 "@type": "Organization",
                 "name": "Ctrl+Scroll",
-                "url": "https://ctrlscroll.com"
+                "url": process.env.NEXT_PUBLIC_API_ORIGIN || ''
               },
               "mainEntityOfPage": {
                 "@type": "WebPage",
-                "@id": `https://ctrlscroll.com${post.permalink}`
-              }
+                "@id": `${process.env.NEXT_PUBLIC_API_ORIGIN || ''}/post/${id}`
+              },
+              "articleSection": post.subreddit,
+              "keywords": post.tags?.join(', '),
+              ...(post.originalUrl && {
+                "url": post.originalUrl
+              })
             })
           }}
         />
-      </main>
-    </div>
-  );
+      </>
+    );
+  } catch (error) {
+    console.error('Error loading post:', error);
+    notFound();
+  }
 }

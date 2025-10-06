@@ -36,4 +36,55 @@
   .badge-live {
     @apply bg-red-100 text-red-800 animate-pulse;
   }
+
+  /* Layout F specific styles */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Dark theme prose styles */
+  .prose-invert {
+    color: rgb(255 255 255 / 0.9);
+  }
+
+  .prose-invert h1,
+  .prose-invert h2,
+  .prose-invert h3,
+  .prose-invert h4,
+  .prose-invert h5,
+  .prose-invert h6 {
+    color: rgb(255 255 255);
+  }
+
+  .prose-invert p {
+    color: rgb(255 255 255 / 0.9);
+  }
+
+  .prose-invert a {
+    color: rgb(255 255 255);
+    text-decoration: underline;
+  }
+
+  .prose-invert a:hover {
+    color: rgb(255 255 255 / 0.8);
+  }
+
+  .prose-invert ul,
+  .prose-invert ol {
+    color: rgb(255 255 255 / 0.9);
+  }
+
+  .prose-invert li {
+    color: rgb(255 255 255 / 0.9);
+  }
 }
