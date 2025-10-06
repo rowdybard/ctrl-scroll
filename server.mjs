@@ -71,7 +71,7 @@ app.get('/admin', (req, res) => {
       border-radius: 20px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
       padding: 40px;
-      max-width: 600px;
+      max-width: 1400px;
       width: 100%;
     }
     .header {
@@ -443,6 +443,105 @@ app.get('/admin', (req, res) => {
       color: #999;
       margin-right: 8px;
     }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      padding: 16px 24px;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 300px;
+      animation: slideIn 0.3s ease;
+      border-left: 4px solid #667eea;
+    }
+    .toast.success { border-left-color: #10b981; }
+    .toast.error { border-left-color: #ef4444; }
+    .toast.warning { border-left-color: #f59e0b; }
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .toast-icon {
+      font-size: 24px;
+    }
+    .toast-content {
+      flex: 1;
+    }
+    .toast-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .toast-message {
+      font-size: 13px;
+      color: #666;
+    }
+    .confirm-modal .modal-content {
+      max-width: 500px;
+    }
+    .confirm-body {
+      padding: 24px;
+      text-align: center;
+    }
+    .confirm-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .confirm-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 12px;
+    }
+    .confirm-message {
+      color: #666;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .confirm-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e7ff;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    .confirm-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    .confirm-btn {
+      padding: 12px 32px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .confirm-btn-cancel {
+      background: #e5e7eb;
+      color: #333;
+    }
+    .confirm-btn-cancel:hover {
+      background: #d1d5db;
+    }
+    .confirm-btn-confirm {
+      background: #ef4444;
+      color: white;
+    }
+    .confirm-btn-confirm:hover {
+      background: #dc2626;
+    }
   </style>
 </head>
 <body>
@@ -507,10 +606,26 @@ app.get('/admin', (req, res) => {
     <div class="modal-content">
       <div class="modal-header">
         <h3>📄 Post Preview</h3>
-        <button class="modal-close" onclick="closePreview()">×</button>
+        <button class="modal-close" onclick="closeModal('previewModal')">×</button>
       </div>
       <div class="modal-body" id="modalBody">
         <div class="loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="modal confirm-modal">
+    <div class="modal-content">
+      <div class="confirm-body">
+        <div class="confirm-icon" id="confirmIcon">⚠️</div>
+        <div class="confirm-title" id="confirmTitle">Confirm Action</div>
+        <div class="confirm-message" id="confirmMessage">Are you sure?</div>
+        <input type="text" id="confirmInput" class="confirm-input" style="display: none;" placeholder="Type here...">
+        <div class="confirm-actions">
+          <button class="confirm-btn confirm-btn-cancel" onclick="closeModal('confirmModal')">Cancel</button>
+          <button class="confirm-btn confirm-btn-confirm" id="confirmButton">Confirm</button>
+        </div>
       </div>
     </div>
   </div>
@@ -541,16 +656,19 @@ app.get('/admin', (req, res) => {
           statusEl.className = 'status success';
           statusEl.innerHTML = '✅ ' + (data.message || 'Content generated successfully!') + 
             '<br><small>Total: ' + (data.data?.totalPosts || 0) + ' posts, Recent: ' + (data.data?.recentPosts || 0) + '</small>';
+          showToast('Success!', 'Generated ' + (data.data?.totalPosts || 0) + ' posts', 'success');
           updateStats();
           loadPosts(); // Reload post manager
         } else {
           statusEl.className = 'status error';
           statusEl.innerHTML = '❌ ' + (data.error || 'Generation failed') + 
             '<br><small>' + (data.message || '') + '</small>';
+          showToast('Generation Failed', data.error || 'Unknown error', 'error');
         }
       } catch (error) {
         statusEl.className = 'status error';
         statusEl.textContent = '❌ Error: ' + error.message;
+        showToast('Error', error.message, 'error');
       } finally {
         btn.disabled = false;
       }
@@ -560,9 +678,9 @@ app.get('/admin', (req, res) => {
       try {
         const response = await fetch('/health');
         const data = await response.json();
-        alert('✅ System Status: ' + data.status.toUpperCase() + '\\nTimestamp: ' + data.timestamp);
+        showToast('System Healthy', 'Status: ' + data.status.toUpperCase(), 'success');
       } catch (error) {
-        alert('❌ Health check failed: ' + error.message);
+        showToast('Health Check Failed', error.message, 'error');
       }
     }
 
@@ -691,6 +809,42 @@ app.get('/admin', (req, res) => {
       displayPosts(filtered);
     });
 
+    // Toast notifications
+    function showToast(title, message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = \`toast \${type}\`;
+      
+      const icons = { success: '✅', error: '❌', warning: '⚠️' };
+      
+      toast.innerHTML = \`
+        <div class="toast-icon">\${icons[type] || '📢'}</div>
+        <div class="toast-content">
+          <div class="toast-title">\${title}</div>
+          <div class="toast-message">\${message}</div>
+        </div>
+      \`;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'slideIn 0.3s ease reverse';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Modal helpers
+    function closeModal(modalId) {
+      const modal = document.getElementById(modalId);
+      modal.classList.remove('active');
+    }
+
+    // Close modal on background click
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal')) {
+        closeModal(e.target.id);
+      }
+    });
+
     // Preview post
     async function previewPost(slug) {
       const modal = document.getElementById('previewModal');
@@ -707,58 +861,90 @@ app.get('/admin', (req, res) => {
           modalBody.innerHTML = data.content;
         } else {
           modalBody.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div>Failed to load preview</div></div>';
+          showToast('Preview Failed', 'Could not load post', 'error');
         }
       } catch (error) {
         console.error('Preview error:', error);
         modalBody.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div>Error loading preview</div></div>';
+        showToast('Error', error.message, 'error');
       }
     }
 
-    function closePreview() {
-      const modal = document.getElementById('previewModal');
-      modal.classList.remove('active');
-    }
-
-    // Close modal on background click
-    document.getElementById('previewModal')?.addEventListener('click', (e) => {
-      if (e.target.id === 'previewModal') {
-        closePreview();
+    // Confirm dialog
+    function showConfirm(title, message, onConfirm, options = {}) {
+      const modal = document.getElementById('confirmModal');
+      const icon = document.getElementById('confirmIcon');
+      const titleEl = document.getElementById('confirmTitle');
+      const messageEl = document.getElementById('confirmMessage');
+      const input = document.getElementById('confirmInput');
+      const button = document.getElementById('confirmButton');
+      
+      icon.textContent = options.icon || '⚠️';
+      titleEl.textContent = title;
+      messageEl.textContent = message;
+      
+      if (options.requireInput) {
+        input.style.display = 'block';
+        input.value = '';
+        input.placeholder = options.placeholder || 'Type here...';
+      } else {
+        input.style.display = 'none';
       }
-    });
+      
+      button.onclick = () => {
+        if (options.requireInput) {
+          const value = input.value.trim();
+          if (value !== options.requiredValue) {
+            showToast('Invalid Input', \`Please type "\${options.requiredValue}" to confirm\`, 'error');
+            return;
+          }
+        }
+        closeModal('confirmModal');
+        onConfirm();
+      };
+      
+      modal.classList.add('active');
+      if (options.requireInput) {
+        setTimeout(() => input.focus(), 100);
+      }
+    }
 
     // Delete post
     async function deletePost(slug) {
       const post = allPosts.find(p => p.slug === slug);
       if (!post) return;
 
-      if (!confirm(\`Are you sure you want to delete "\\n\\n\${post.title}\\"?\\n\\nThis action cannot be undone.\`)) {
-        return;
-      }
-
       const secret = document.getElementById('cronSecret').value;
       if (!secret) {
-        alert('⚠️ Please enter your cron secret first');
+        showToast('Cron Secret Required', 'Please enter your cron secret first', 'warning');
         return;
       }
 
-      try {
-        const response = await fetch(\`/api/posts/\${slug}\`, {
-          method: 'DELETE',
-          headers: { 'x-cron': secret }
-        });
+      showConfirm(
+        'Delete Post',
+        \`Are you sure you want to delete "\${post.title}"? This action cannot be undone.\`,
+        async () => {
+          try {
+            const response = await fetch(\`/api/posts/\${slug}\`, {
+              method: 'DELETE',
+              headers: { 'x-cron': secret }
+            });
 
-        const data = await response.json();
+            const data = await response.json();
 
-        if (response.ok) {
-          alert('✅ Post deleted successfully!');
-          loadPosts(); // Reload the list
-          updateStats(); // Update stats
-        } else {
-          alert('❌ Failed to delete: ' + data.error);
-        }
-      } catch (error) {
-        alert('❌ Error: ' + error.message);
-      }
+            if (response.ok) {
+              showToast('Post Deleted', 'Successfully removed post', 'success');
+              loadPosts();
+              updateStats();
+            } else {
+              showToast('Delete Failed', data.error || 'Unknown error', 'error');
+            }
+          } catch (error) {
+            showToast('Error', error.message, 'error');
+          }
+        },
+        { icon: '🗑️' }
+      );
     }
 
     // Drag and drop functionality
@@ -843,50 +1029,58 @@ app.get('/admin', (req, res) => {
     // Delete all posts
     async function deleteAllPosts() {
       if (allPosts.length === 0) {
-        alert('⚠️ No posts to delete');
+        showToast('No Posts', 'There are no posts to delete', 'warning');
         return;
       }
 
       const secret = document.getElementById('cronSecret').value;
       if (!secret) {
-        alert('⚠️ Please enter your cron secret first');
+        showToast('Cron Secret Required', 'Please enter your cron secret first', 'warning');
         return;
       }
 
-      if (!confirm(\`⚠️ WARNING: This will delete ALL \${allPosts.length} posts!\\n\\nThis action CANNOT be undone.\\n\\nAre you absolutely sure?\`)) {
-        return;
-      }
+      showConfirm(
+        'Delete All Posts',
+        \`This will permanently delete ALL \${allPosts.length} posts. This action CANNOT be undone.\`,
+        async () => {
+          let deleted = 0;
+          let failed = 0;
 
-      const confirmText = prompt(\`Type "DELETE ALL" to confirm deletion of \${allPosts.length} posts:\`);
-      if (confirmText !== 'DELETE ALL') {
-        alert('❌ Deletion cancelled');
-        return;
-      }
+          showToast('Deleting...', \`Removing \${allPosts.length} posts\`, 'warning');
 
-      let deleted = 0;
-      let failed = 0;
+          for (const post of allPosts) {
+            try {
+              const response = await fetch(\`/api/posts/\${post.slug}\`, {
+                method: 'DELETE',
+                headers: { 'x-cron': secret }
+              });
 
-      for (const post of allPosts) {
-        try {
-          const response = await fetch(\`/api/posts/\${post.slug}\`, {
-            method: 'DELETE',
-            headers: { 'x-cron': secret }
-          });
-
-          if (response.ok) {
-            deleted++;
-          } else {
-            failed++;
+              if (response.ok) {
+                deleted++;
+              } else {
+                failed++;
+              }
+            } catch (error) {
+              console.error(\`Failed to delete \${post.slug}:\`, error);
+              failed++;
+            }
           }
-        } catch (error) {
-          console.error(\`Failed to delete \${post.slug}:\`, error);
-          failed++;
-        }
-      }
 
-      alert(\`✅ Deleted \${deleted} posts\` + (failed > 0 ? \`\\n❌ Failed: \${failed}\` : ''));
-      loadPosts();
-      updateStats();
+          showToast(
+            'Batch Delete Complete', 
+            \`Deleted: \${deleted}\` + (failed > 0 ? \` | Failed: \${failed}\` : ''), 
+            failed > 0 ? 'warning' : 'success'
+          );
+          loadPosts();
+          updateStats();
+        },
+        { 
+          icon: '🗑️',
+          requireInput: true,
+          requiredValue: 'DELETE ALL',
+          placeholder: 'Type "DELETE ALL" to confirm'
+        }
+      );
     }
 
     // Load posts on page load
@@ -1109,4 +1303,5 @@ app.listen(PORT, () => {
     }, 5000);
   }
 });
+
 
