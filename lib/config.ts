@@ -10,6 +10,10 @@ export const config = {
     userAgent: process.env.REDDIT_USER_AGENT || 'CtrlScrollBot/2.0'
   },
   
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY!
+  },
+  
   watchlists: [
     {
       subreddit: 'technology',

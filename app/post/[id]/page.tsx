@@ -22,6 +22,24 @@ interface PostDetail {
     B: string;
     C: string;
   };
+  images?: {
+    hero: {
+      url: string;
+      prompt: string;
+      localPath: string;
+    };
+    context?: {
+      url: string;
+      prompt: string;
+      localPath: string;
+    };
+  };
+  richContext?: {
+    background: string;
+    keyPoints: string[];
+    relatedTopics: string[];
+    timeline?: string[];
+  };
 }
 
 export default function PostPage() {
@@ -129,6 +147,26 @@ export default function PostPage() {
             </div>
           </header>
 
+          {/* Hero Image */}
+          {post.images?.hero && (
+            <div className="mb-8">
+              <div className="relative h-64 w-full overflow-hidden rounded-lg">
+                <img 
+                  src={`/api/images/${post.images.hero.localPath.split('/').pop()}`}
+                  alt={post.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+              </div>
+              <p className="text-sm text-gray-500 mt-2 italic">
+                AI-generated image: {post.images.hero.prompt}
+              </p>
+            </div>
+          )}
+
           {/* Summary */}
           <div className="prose prose-lg max-w-none mb-8">
             <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
@@ -149,6 +187,62 @@ export default function PostPage() {
               </div>
             )}
           </div>
+
+          {/* Rich Context */}
+          {post.richContext && (
+            <div className="mb-8 p-6 bg-gray-50 rounded-lg">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Background & Context</h3>
+              
+              {post.richContext.background && (
+                <div className="mb-4">
+                  <p className="text-gray-700 leading-relaxed">{post.richContext.background}</p>
+                </div>
+              )}
+              
+              {post.richContext.keyPoints && post.richContext.keyPoints.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-md font-medium text-gray-900 mb-2">Key Developments:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    {post.richContext.keyPoints.map((point, index) => (
+                      <li key={index} className="text-gray-700 text-sm">{point}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {post.richContext.relatedTopics && post.richContext.relatedTopics.length > 0 && (
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 mb-2">Related Topics:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {post.richContext.relatedTopics.map((topic, index) => (
+                      <span key={index} className="badge bg-blue-100 text-blue-800 text-xs">
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Context Image */}
+          {post.images?.context && (
+            <div className="mb-8">
+              <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                <img 
+                  src={`/api/images/${post.images.context.localPath.split('/').pop()}`}
+                  alt="Context illustration"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-2 italic">
+                Context image: {post.images.context.prompt}
+              </p>
+            </div>
+          )}
 
           {/* Tags */}
           {post.tags.length > 0 && (

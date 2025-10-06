@@ -4,6 +4,7 @@ import { config } from '../config';
 import { atomicWrite } from '@/lib/atomicWrite';
 import { appendJsonl } from '@/lib/appendJsonl';
 import { EnrichedPost, SummarizedPost, ScoredPost, PublishedPost } from '@/lib/types';
+import { generateArticleImages, generateRichContext } from '@/lib/imageGeneration';
 
 export async function publishPosts(
   posts: Array<EnrichedPost & SummarizedPost>, 
@@ -45,6 +46,12 @@ async function publishPost(
   // Extract tags from entities
   const tags = post.entities.slice(0, 3);
 
+  // Generate images and rich context
+  const [images, richContext] = await Promise.all([
+    generateArticleImages(title, post.topComments.join(' '), post.subreddit),
+    generateRichContext(title, post.topComments.join(' '), post.subreddit)
+  ]);
+
   const publishedPost: PublishedPost = {
     id: post.id,
     title,
@@ -57,7 +64,9 @@ async function publishPost(
     permalink: `/post/${post.id}`,
     originalUrl: post.url,
     externalTitle: post.externalTitle,
-    publishedAt: new Date().toISOString()
+    publishedAt: new Date().toISOString(),
+    images: images,
+    richContext: richContext
   };
 
   // Save to derived/posts directory

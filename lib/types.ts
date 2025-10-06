@@ -92,6 +92,25 @@ export interface PublishedPost {
   externalTitle?: string;
   duplicateOf?: string;
   publishedAt: string;
+  // Enhanced content
+  images?: {
+    hero: {
+      url: string;
+      prompt: string;
+      localPath: string;
+    };
+    context?: {
+      url: string;
+      prompt: string;
+      localPath: string;
+    };
+  };
+  richContext?: {
+    background: string;
+    keyPoints: string[];
+    relatedTopics: string[];
+    timeline?: string[];
+  };
 }
 
 export interface WatchlistConfig {
