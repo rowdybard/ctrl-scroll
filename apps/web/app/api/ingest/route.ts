@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ingestAllWatchlists } from '../../../lib/worker/ingestSubreddit';
+import { ingestAllWatchlists } from '@/lib/worker/ingestSubreddit';
 
 export async function POST(request: NextRequest) {
   try {

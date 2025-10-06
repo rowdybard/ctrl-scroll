@@ -4,9 +4,9 @@
   "description": "Reddit → AI → Static Site Generator V2",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
+    "build": "pnpm --filter @ctrlscroll/shared build && pnpm --filter @ctrlscroll/web build",
     "dev": "turbo run dev",
-    "start": "cd apps/web && next start",
+    "start": "cd apps/web && NODE_ENV=production next start",
     "test": "turbo run test",
     "test:shared": "turbo run test --filter=@ctrlscroll/shared",
     "lint": "turbo run lint",

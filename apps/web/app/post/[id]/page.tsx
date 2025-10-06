@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { trackClick } from '../../lib/ab';
+import { trackClick } from '@/lib/ab';
 
 interface PostDetail {
   id: string;

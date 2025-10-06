@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateRSSFeed, generateJSONFeed } from '../../../lib/worker/feeds';
-import { generateSitemap } from '../../../lib/worker/sitemap';
+import { generateRSSFeed, generateJSONFeed } from '@/lib/feeds';
+import { generateSitemap } from '@/lib/sitemap';
 
 export async function POST(request: NextRequest) {
   try {

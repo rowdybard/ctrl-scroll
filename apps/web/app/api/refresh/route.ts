@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ingestAllWatchlists } from '../../../lib/worker/ingestSubreddit';
-import { processRawPosts } from '../../../lib/worker/normalizeAndEnrich';
-import { summarizePosts } from '../../../lib/worker/summarize';
-import { dedupePosts, applyOptOut } from '../../../lib/worker/dedupe';
-import { scorePosts } from '../../../lib/worker/score';
-import { publishPosts } from '../../../lib/worker/publish';
+import { ingestAllWatchlists } from '@/lib/worker/ingestSubreddit';
+import { processRawPosts } from '@/lib/worker/normalizeAndEnrich';
+import { summarizePosts } from '@/lib/worker/summarize';
+import { dedupePosts, applyOptOut } from '@/lib/worker/dedupe';
+import { scorePosts } from '@/lib/worker/score';
+import { publishPosts } from '@/lib/worker/publish';
 
 export async function POST(request: NextRequest) {
   try {

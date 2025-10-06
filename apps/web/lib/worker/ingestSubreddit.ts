@@ -1,4 +1,4 @@
-import { RedditClient } from '../lib/reddit';
+import { RedditClient } from '../reddit';
 import { config } from '../config';
 import { WatchlistConfig } from '@ctrlscroll/shared';
 
