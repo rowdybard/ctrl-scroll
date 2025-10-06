@@ -4,6 +4,9 @@ import { config } from './config';
 import { ingestAllWatchlists } from './jobs/ingestSubreddit';
 import { processRawPosts } from './jobs/normalizeAndEnrich';
 import { summarizePosts } from './jobs/summarize';
+import { dedupePosts, applyOptOut } from './jobs/dedupe';
+import { scorePosts } from './jobs/score';
+import { publishPosts } from './jobs/publish';
 
 const fastify = Fastify({
   logger: {
@@ -63,13 +66,27 @@ fastify.post('/internal/run/refresh', async (request, reply) => {
     // Summarize posts
     const summarizedPosts = await summarizePosts(enrichedPosts);
     
+    // Deduplicate posts
+    const { published: dedupeResults, duplicates } = await dedupePosts(enrichedPosts, summarizedPosts);
+    
+    // Apply opt-out filters
+    const filteredPosts = await applyOptOut(dedupeResults);
+    
+    // Score posts
+    const scoredPosts = scorePosts(filteredPosts);
+    
+    // Publish posts
+    const publishedPosts = await publishPosts(filteredPosts, scoredPosts);
+    
     return {
       success: true,
-      message: `Processed ${totalIngested} new posts, enriched ${enrichedPosts.length}, summarized ${summarizedPosts.length}`,
+      message: `Processed ${totalIngested} new posts, enriched ${enrichedPosts.length}, summarized ${summarizedPosts.length}, published ${publishedPosts.length}`,
       results: {
         ingested: totalIngested,
         enriched: enrichedPosts.length,
-        summarized: summarizedPosts.length
+        summarized: summarizedPosts.length,
+        duplicates: duplicates.length,
+        published: publishedPosts.length
       }
     };
   } catch (error) {
