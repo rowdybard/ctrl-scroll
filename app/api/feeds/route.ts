@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateRSSFeed, generateJSONFeed } from '@/lib/feeds';
 import { generateSitemap } from '@/lib/sitemap';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // Check basic auth

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ingestAllWatchlists } from '@/lib/worker/ingestSubreddit';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // Check basic auth

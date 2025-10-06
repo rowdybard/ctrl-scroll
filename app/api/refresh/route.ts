@@ -6,6 +6,9 @@ import { dedupePosts, applyOptOut } from '@/lib/worker/dedupe';
 import { scorePosts } from '@/lib/worker/score';
 import { publishPosts } from '@/lib/worker/publish';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // Check basic auth

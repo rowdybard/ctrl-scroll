@@ -6,6 +6,9 @@ const config = {
   dataDir: process.env.DATA_DIR || './data'
 };
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const jsonPath = join(config.dataDir, 'feeds', 'feed.json');
