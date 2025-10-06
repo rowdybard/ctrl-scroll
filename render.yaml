@@ -23,11 +23,11 @@ services:
       - key: DENYLIST
         value: NSFW,leak
       - key: MAX_POSTS
-        value: 5
+        value: 3
       - key: MIN_SCORE
-        value: 1
+        value: 100
       - key: MAX_AGE_HOURS
-        value: 168
+        value: 48
       - key: USER_AGENT
         value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
       - key: CRON_SECRET
