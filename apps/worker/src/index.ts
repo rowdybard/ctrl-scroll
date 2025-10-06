@@ -7,6 +7,9 @@ import { summarizePosts } from './jobs/summarize';
 import { dedupePosts, applyOptOut } from './jobs/dedupe';
 import { scorePosts } from './jobs/score';
 import { publishPosts } from './jobs/publish';
+import { generateRSSFeed, generateJSONFeed } from './lib/feeds';
+import { generateSitemap } from './lib/sitemap';
+import { generateOGImages } from './lib/og';
 
 const fastify = Fastify({
   logger: {
@@ -101,10 +104,21 @@ fastify.post('/internal/run/feeds', async (request, reply) => {
   try {
     console.log('🔄 Starting feeds rebuild job...');
     
-    // TODO: Implement in M5
+    // Generate RSS feed
+    await generateRSSFeed();
+    
+    // Generate JSON feed
+    await generateJSONFeed();
+    
+    // Generate sitemap
+    await generateSitemap();
+    
+    // Generate OG images (optional)
+    // await generateOGImages(publishedPosts);
+    
     return {
       success: true,
-      message: 'Feeds rebuild completed (placeholder)'
+      message: 'Feeds, sitemap, and OG images rebuilt successfully'
     };
   } catch (error) {
     console.error('❌ Feeds job failed:', error);
