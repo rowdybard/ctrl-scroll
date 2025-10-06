@@ -33,7 +33,7 @@ services:
     disk:
       name: site-storage
       mountPath: /var/data
-      sizeGB: 1
+      sizeGB: 2
 
 # Optional: Add a cron job to trigger generation
 # - type: cron
