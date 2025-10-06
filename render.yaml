@@ -13,15 +13,15 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: ALLOWLIST_SUBS
-        value: news,technology
+        value: news,worldnews,technology,science,AskReddit
       - key: DENYLIST
         value: NSFW,leak
       - key: MAX_POSTS
         value: 3
       - key: MIN_SCORE
-        value: 50
+        value: 10
       - key: MAX_AGE_HOURS
-        value: 48
+        value: 72
       - key: USER_AGENT
         value: CtrlScrollBot/1.0
       - key: CRON_SECRET
