@@ -4,9 +4,9 @@
   "description": "Reddit → AI → Static Site Generator V2",
   "private": true,
   "scripts": {
-    "build": "tsc && next build",
+    "build": "tsc --noEmit && next build",
     "dev": "next dev",
-    "start": "NODE_ENV=production next start",
+    "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
